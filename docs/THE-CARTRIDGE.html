@@ -1,0 +1,116 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The cartridge — Konami&#x27;s Ping Pong (Konami, 1985)</title>
+<style>
+:root{--tinta:#cfd0d4;--suave:#83868f;--fondo:#000;--panel:#0c0e13;--linea:#23262e;
+  --rojo:#ff897d;--cyan:#65dbef;--verde:#3eb849;--oro:#ded087}
+@media (prefers-color-scheme:light){:root{--tinta:#191a1e;--suave:#5a5d66;--fondo:#e9e7e1;
+  --panel:#f7f6f2;--linea:#d0cdc5;--rojo:#b23f34;--cyan:#1c6b7c;--verde:#2b7734;--oro:#8a7420}}
+:root[data-theme="dark"]{--tinta:#cfd0d4;--suave:#83868f;--fondo:#000;--panel:#0c0e13;
+  --linea:#23262e;--rojo:#ff897d;--cyan:#65dbef;--verde:#3eb849;--oro:#ded087}
+:root[data-theme="light"]{--tinta:#191a1e;--suave:#5a5d66;--fondo:#e9e7e1;--panel:#f7f6f2;
+  --linea:#d0cdc5;--rojo:#b23f34;--cyan:#1c6b7c;--verde:#2b7734;--oro:#8a7420}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--tinta);padding:0 1.25rem 6rem;
+  font:15px/1.7 ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+.w{max-width:1120px;margin:0 auto}
+.n{max-width:68ch}
+h1,h2,h3,h4{font-weight:400;text-wrap:balance}
+a{color:var(--cyan)}
+img{image-rendering:pixelated;max-width:100%;height:auto;display:block}
+header.top{display:flex;flex-direction:column;align-items:center;gap:1.5rem;
+  padding:4rem 0 2rem;text-align:center}
+header.top img{width:min(100%,642px)}
+.claim{max-width:60ch;color:var(--suave);font-size:1.05rem}
+.claim b{color:var(--tinta);font-weight:400}
+.ficha{display:flex;flex-wrap:wrap;justify-content:center;gap:0 1.5rem;width:100%;
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--suave);
+  border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);padding:.85rem 0}
+.ficha b{color:var(--rojo);font-weight:400}
+nav{display:flex;flex-wrap:wrap;gap:1.25rem;justify-content:center;padding:1.25rem 0;
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+nav a{color:var(--suave);text-decoration:none;border-bottom:1px solid transparent}
+nav a:hover,nav a:focus{color:var(--tinta);border-bottom-color:var(--rojo)}
+nav.docs{border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);
+  margin-bottom:1rem}
+section{margin-top:4.5rem;scroll-margin-top:1rem}
+section>h2{font-size:1rem;letter-spacing:.1em;text-transform:uppercase;
+  border-left:3px solid var(--rojo);padding-left:.9rem;margin:0 0 1.5rem}
+.cifras{display:grid;gap:1px;background:var(--linea);border:1px solid var(--linea);
+  grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.cifra{background:var(--panel);padding:1.1rem}
+.cifra b{display:block;font-size:1.7rem;color:var(--oro);font-weight:400;
+  font-variant-numeric:tabular-nums;line-height:1.2}
+.cifra span{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--suave)}
+.hall{border-top:1px solid var(--linea);padding-top:1.75rem;margin-top:2.5rem}
+.hall:first-of-type{border-top:0;padding-top:0;margin-top:0}
+.hall h3{margin:0 0 .75rem;font-size:1.15rem;color:var(--rojo)}
+.hall h4{color:var(--oro);margin:1.5rem 0 .5rem;font-size:.95rem}
+.hall p{margin:0 0 1rem}
+pre.asm{background:var(--panel);border-left:2px solid var(--verde);margin:1.25rem 0;
+  padding:1rem 1.1rem;overflow-x:auto;font-size:13px;line-height:1.6;color:var(--tinta)}
+.par{display:grid;gap:1.25rem;grid-template-columns:1fr}
+@media(min-width:820px){.par{grid-template-columns:1fr 1fr}}
+.par figure{margin:0}
+table{border-collapse:collapse;width:100%;margin:1.25rem 0;font-size:13px;display:block;
+  overflow-x:auto}
+th,td{text-align:left;padding:.5rem .75rem;border-bottom:1px solid var(--linea)}
+th{color:var(--suave);font-weight:400;font-size:11px;letter-spacing:.07em;text-transform:uppercase}
+td.num{font-variant-numeric:tabular-nums;color:var(--oro)}
+.nivel{margin-top:2rem}
+.nivel h3{margin:0 0 .9rem;font-size:.95rem;letter-spacing:.06em;text-transform:uppercase}
+.nivel em{color:var(--cyan);font-style:normal}
+.sep{color:var(--suave);margin:0 .6rem}
+.rejilla{display:grid;gap:.9rem;grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.rejilla figure{margin:0;background:var(--panel);box-shadow:0 0 0 1px var(--linea)}
+.rejilla figcaption{display:flex;justify-content:space-between;padding:.45rem .65rem;
+  font-size:11px;color:var(--suave);border-top:1px solid var(--linea)}
+.dir{font-variant-numeric:tabular-nums;color:var(--verde)}
+footer{margin-top:5rem;padding-top:1.5rem;border-top:1px solid var(--linea);
+  color:var(--suave);font-size:12px}
+
+/* Aviso de trabajo en curso: tiene que verse antes que las cifras, porque un
+   100% mal leido hace mas dano que no ponerlo. */
+.aviso{background:#3a2a10;border-left:3px solid var(--oro);margin:1.5rem auto;
+  padding:1rem 1.2rem;max-width:900px;border-radius:4px}
+.aviso p{margin:0;color:var(--tinta);font-size:15px;line-height:1.65}
+.galeria{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:1.5rem;margin:1.5rem 0}
+.galeria figure{margin:0}
+.galeria img{width:100%;height:auto;image-rendering:pixelated;
+  border:1px solid var(--linea);border-radius:3px}
+.galeria figcaption{color:var(--suave);font-size:13px;margin-top:.5rem}
+audio{display:block;width:100%;max-width:640px;margin:.75rem 0 1.5rem}
+</style>
+<div class="w"><nav class="top"><a href="index.html">Home</a><a href="GETTING-STARTED.html">Start</a><a href="THE-GAME.html">The game</a><a href="THE-CARTRIDGE.html" style=color:var(--tinta)>The cartridge</a><a href="THE-CODE.html">The code</a><a href="FINDINGS.html">Findings</a><a href="IN-THE-EMULATOR.html">In the emulator</a><a href="OPEN-QUESTIONS.html">Open questions</a><a href="es/EL-CARTUCHO.html" style="margin-left:auto;color:var(--oro)">Castellano</a></nav>
+<h1 id="the-cartridge">The cartridge</h1>
+<h2 id="the-facts">The facts</h2>
+<table><tr><th></th><th></th></tr><tr><td>Game</td><td>Konami&#x27;s Ping Pong</td></tr><tr><td>Publisher</td><td>Konami, 1985</td></tr><tr><td>Reference</td><td><b>RC-731</b></td></tr><tr><td>Size</td><td>16,384 bytes</td></tr><tr><td>Machine</td><td>MSX1</td></tr><tr><td>Page</td><td>1 (0x4000..0x7FFF)</td></tr><tr><td>sha256</td><td><code>8e0f57b2c52e85505505c1d4bb4643eb7311213676f0ecfe21dd06571fc0bbd5</code></td></tr></table>
+<h2 id="the-header">The header</h2>
+<p>The first sixteen bytes are the header every MSX cartridge carries:</p>
+<pre><code>41 42 6C 40 00 00 00 00 00 00 00 00 00 00 00 00
+&quot;A&quot; &quot;B&quot;  INIT     STATEMENT  DEVICE   TEXT   reserved</code></pre>
+<p>&quot;AB&quot; is the signature, and behind it the address of INIT: <b>0x406C</b>. The other three entries are zero, so the cartridge adds no BASIC statements and declares no device.</p>
+<h2 id="init-starts-no-loop">INIT starts no loop</h2>
+<p>What 0x406C does fits in twenty instructions:</p>
+<ol><li>disables interrupts and sets mode 1</li><li>writes a <code>jp</code> (0xC3) at 0xFD9A and the address 0x4019 at 0xFD9B, which is the <b>H.KEYI</b> hook</li><li>puts the stack at 0xE400</li><li>clears the 0x400 bytes of variables from 0xE000</li><li>sets the (0xE005) latch, builds the screen, clears it</li><li>enables interrupts and sits on <code>jr $</code></li></ol>
+<p>And there it stays forever. <b>The whole game hangs off the interrupt</b>, once per frame, off H.KEYI.</p>
+<h2 id="how-the-16-kb-break-down">How the 16 KB break down</h2>
+<table><tr><th></th><th>bytes</th><th></th></tr><tr><td>code reached</td><td>7,676</td><td>46.85 %</td></tr><tr><td>data identified</td><td>8,708</td><td>53.15 %</td></tr><tr><td>unexplained</td><td><b>0</b></td><td>0.00 %</td></tr></table>
+<h2 id="the-screen">The screen</h2>
+<p>The eight VDP registers come from the table at 0x47D6, which 0x47C5 pours into R0..R7:</p>
+<pre><code>02 E2 0E 7F 07 76 03 E4</code></pre>
+<table><tr><th>reg</th><th>value</th><th>what it says</th></tr><tr><td>R0</td><td>0x02</td><td>SCREEN 2</td></tr><tr><td>R1</td><td>0xE2</td><td>16K, display on, interrupt on, <b>16x16 sprites</b></td></tr><tr><td>R2</td><td>0x0E</td><td>NAME table at 0x3800</td></tr><tr><td>R3</td><td>0x7F</td><td>COLOUR: base 0x0000, mask 0x03FF</td></tr><tr><td>R4</td><td>0x07</td><td>PATTERNS: base 0x2000, mask 0x03FF</td></tr><tr><td>R5</td><td>0x76</td><td>sprite attributes at 0x3B00</td></tr><tr><td>R6</td><td>0x03</td><td>sprite patterns at 0x1800</td></tr><tr><td>R7</td><td>0xE4</td><td>ink 14 on background 4</td></tr></table>
+<p><b>R3 and R4 are not addresses</b>: they are a base and a mask. Decoded, they lay out VRAM the other way round from the usual, with COLOUR low and PATTERNS high:</p>
+<table><tr><th></th><th></th></tr><tr><td>0x0000..0x17FF</td><td>COLOUR</td></tr><tr><td>0x1800..0x1FFF</td><td>sprite patterns</td></tr><tr><td>0x2000..0x37FF</td><td>PATTERNS</td></tr><tr><td>0x3800..0x3AFF</td><td>NAMES</td></tr><tr><td>0x3B00..0x3B7F</td><td>sprite attributes</td></tr></table>
+<p>Reading them as addresses gives the layout swapped, and with it the shapes come out right and the colours in stripes. There is no need to take the reading on trust here: the measured destinations of <b>every</b> compressed block fall inside this layout and not the other, and the cartridge itself confirms it twice by filling 0x0080 with 0xF0 and 0x1600 with 0x70 -values that only make sense as colour-.</p>
+<p>R7 is 0xE4 -blue background- while the company logo is up, and 0x4B4B changes it to 0xE0 -black- before painting the player selection.</p>
+<h2 id="ram">RAM</h2>
+<p>The game uses 0x400 bytes from 0xE000, and clears them all at startup. The addresses that come up most:</p>
+<table><tr><th>address</th><th>what it holds</th></tr><tr><td>0xE000 / 0xE001</td><td>the scene and the step within it</td></tr><tr><td>0xE002</td><td>the mode: bit 5 two players, bit 6 in play</td></tr><tr><td>0xE003</td><td>the frame clock, never reset</td></tr><tr><td>0xE004</td><td>the subscene countdown</td></tr><tr><td>0xE005</td><td>the interrupt reentry latch</td></tr><tr><td>0xE008 / 0xE009</td><td>player 1&#x27;s control: edges and raw state</td></tr><tr><td>0xE048 / 0xE049</td><td>player 2&#x27;s</td></tr><tr><td>0xE010..</td><td>the three sound channels, fifteen bytes each</td></tr><tr><td>0xE070..</td><td>the sprite attribute buffer, 0x80 bytes</td></tr><tr><td>0xE100..</td><td>the ball: position, velocity and state</td></tr><tr><td>0xE130</td><td>the phase of the rally</td></tr><tr><td>0xE132 / 0xE133</td><td>the two scores, in BCD</td></tr><tr><td>0xE160.. / 0xE180..</td><td>the two players</td></tr></table>
+<h2 id="the-hidden-mark">The hidden mark</h2>
+<p>The last fifteen bytes:</p>
+<pre><code>AC B8 9D AC B8 9A 00 98 00 9F 94 89 0C 31 AA</code></pre>
+<p>Twelve of title in katakana -コナミのピンポン-, the length 0x0C and the 0x31 of <b>RC-731</b>. Before them sit 70 bytes of 0xFF, whatever was left over of the cartridge.</p>
+<p>That mark was discovered by <b>Manuel Pazos</b>, and the finding is his.</p>
+<footer><p><em>Konami's Ping Pong</em> was published by Konami for the MSX in 1985; its catalogue number is RC-731 and it is 16 KB. All rights in the game remain with their holders. This is preservation, study and documentation work, and the cartridge image is not distributed.</p></footer></div>

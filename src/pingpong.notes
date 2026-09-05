@@ -1,0 +1,3135 @@
+# ======================================================================
+# KONAMI'S PING PONG (RC-731) - anotaciones del desensamblado
+# ======================================================================
+# Cada directiva D declara un rango de datos con su nombre y con la MEDIDA de
+# la que sale. Ningun limite esta estimado a ojo: los guiones de rotulos los
+# mide tools/guiones.py ejecutando el propio interprete del cartucho, y los
+# bloques comprimidos tools/rle.py ejecutando su descompresor.
+
+# ======================================================================
+# LA CABECERA
+# ======================================================================
+D 0x4000 0x4010 cabecera_del_cartucho  "AB" y la direccion de INIT (0x406C); STATEMENT, DEVICE y TEXT a cero, y los seis bytes reservados tambien
+F 0x4000 w
+
+# ======================================================================
+# EL REPARTO DE ESCENAS
+# ======================================================================
+# La tabla va PEGADA detras del `call L_4058` del despachador de 0x4062
+# -`add a,a / pop hl / call L_4058 / ld e,(hl) / inc hl / ld d,(hl) / ex de,hl
+# / jp (hl)`-: el `pop hl` recupera su propia direccion de retorno, que es la
+# tabla.
+#
+# El encaje que fija la cuenta: la tabla acaba justo donde empieza su primera
+# entrada. 0x40C9 + 8*2 = 0x40D9, y la primera palabra es 0x40D9.
+D 0x40c9 0x40d9 tabla_de_escenas  8 entradas, pegada detras del call del despachador; la primera apunta a 0x40D9, justo detras de la tabla
+F 0x40c9 w
+
+# Misma construccion y mismo encaje: 0x6225 + 12*2 = 0x623D, y la primera
+# palabra es 0x623D.
+D 0x6225 0x623d tabla_de_subescenas  12 entradas, pegada detras de su call; la primera apunta a 0x623D, justo detras de la tabla
+F 0x6225 w
+
+# ======================================================================
+# LA GEOMETRIA DE LA PANTALLA
+# ======================================================================
+# Los ocho bytes que L_47C5 vuelca en R0..R7 con WRTVDP. Descifrados:
+#
+#   R0=02  M3=1, o sea SCREEN 2
+#   R1=E2  16K, pantalla activa, interrupcion activa, sprites de 16x16
+#   R2=0E  NOMBRES en 0x3800
+#   R3=7F  COLOR    base 0x0000, mascara 0x03FF (los tres tercios sueltos)
+#   R4=07  PATRONES base 0x2000, mascara 0x03FF
+#   R5=76  atributos de sprite en 0x3B00
+#   R6=03  patrones de sprite en 0x1800
+#   R7=E4  tinta 14 sobre fondo 4
+#
+# O sea que este cartucho pone la VRAM DEL REVES de lo acostumbrado: el COLOR
+# abajo, en 0x0000..0x17FF, y los PATRONES arriba, en 0x2000..0x37FF. R3 y R4
+# no son direcciones sino base y mascara, y leerlos como direcciones da el
+# reparto cambiado. Los destinos medidos de todos los bloques comprimidos
+# caen dentro de este reparto y no del otro.
+#
+# Y los ocho bytes son los MISMOS que los de Road Fighter, uno por uno: alli
+# estan en 0x46A9 y dicen tambien `02 E2 0E 7F 07 76 03 E4`. No es una
+# casualidad ni un hallazgo de este cartucho, sino una pieza mas del armazon
+# que los dos comparten.
+D 0x47d6 0x47de registros_del_vdp  R0..R7 tal como los vuelca L_47C5; SCREEN 2 con NOMBRES en 0x3800, COLOR en 0x0000 y PATRONES en 0x2000. Los OCHO bytes son identicos a los de Road Fighter
+F 0x47d6 1
+
+# ======================================================================
+# LOS ROTULOS: guiones del interprete L_4764
+# ======================================================================
+# L_4764 es un interprete: [destino en VRAM, word] [indices de patron...], con
+# 0xFE para saltar a otro destino y 0xFF para terminar. Escribe en la tabla de
+# NOMBRES con WRTVRM. Entrando por L_476C se salta la cabecera de dos bytes,
+# con el destino ya puesto en HL; y con C=0 en vez de 0xFF la misma rutina
+# escribe ceros, o sea que BORRA el rotulo reutilizando su guion.
+#
+# La fuente esta ordenada como el ASCII a partir del espacio: el indice de
+# patron es el codigo menos 0x20. Comprobado con el propio contenido, no
+# supuesto: el guion de 0x466E sale "GAME SET" y el de 0x6E0E "CHANGE COURT".
+#
+# Los limites NO estan estimados: los da tools/guiones.py ejecutando ese mismo
+# interprete desde cada arranque, y cada bloque cierra en su propio 0xFF.
+D 0x451e 0x452b guion_marco_del_menu  los cuatro patrones 0xEA..0xED separados por espacios, en 0x396C
+D 0x452b 0x4539 guion_you_msx  "YOU" en 0x3989 y "MSX" en 0x39A9: el reparto de un jugador
+D 0x4539 0x4547 guion_1up_2up  "1UP" en 0x3989 y "2UP" en 0x39A9: el reparto de dos jugadores. Lo elige el `bit 5` de (0xE002) en 0x4514
+D 0x457d 0x4590 guion_game_love_all  "GAME" en 0x398F y "LOVE ALL" en 0x39CC, el tanteo de salida
+D 0x45f7 0x460b guion_level  "LEVEL" en 0x396E y "1 2 3 4 5" en 0x39AC
+D 0x460b 0x461f guion_cursor_de_nivel  el par de patrones 0x6A y 0xCA en las cuatro filas 0x396F, 0x398F, 0x39AF y 0x39CF
+D 0x461f 0x4624 niveles_seleccionables  1, 3, 5, 7 y 9: los cinco valores que ofrece el menu de nivel
+F 0x461f 5
+D 0x4624 0x462c tabla_de_guiones_del_saque  4 entradas: 0x462C, 0x462C, 0x4638 y 0x4650
+F 0x4624 w
+D 0x462c 0x4638 guion_saque_you_msx  "YOU" en 0x3A1B y "MSX" en 0x3962. Se entra tambien por 0x462E, saltandose la cabecera
+D 0x4638 0x4650 guion_saque_1up  "1UP" en 0x3A1B, "2UP" en 0x3962 y el patron 0x06 tres veces en 0x397B y 0x3A02, que borra el otro lado
+D 0x4650 0x4668 guion_saque_2up  el mismo reparto con los sitios cambiados: "1UP" en 0x397B y "2UP" en 0x3A02
+D 0x466e 0x4679 guion_game_set  "GAME SET" en 0x38CC
+D 0x46a1 0x46ac guion_win  "WIN" y el patron 0x5B en 0x38CC
+D 0x488f 0x48a6 guion_creditos  dos filas de siete y ocho patrones en 0x3A6C y 0x3AAC, encabezadas por 0xC1 y 0xC2
+D 0x68ea 0x68f2 guion_deuce  "DEUCE" en 0x398D, el empate a veinte que reinicia el marcador
+D 0x6e0e 0x6e1d guion_change_court  "CHANGE COURT" en 0x398A
+
+# Los cuatro guiones que dibujan las dos columnas laterales, y su tabla. Cada
+# uno reparte los tiles en vertical saltando de 0x1F, 0x20 o 0x21 en 0x21, o
+# sea EN DIAGONAL: la columna se inclina hacia dentro segun baja.
+D 0x6d15 0x6d1d tabla_de_guiones_laterales  4 entradas: 0x6D75, 0x6DA1, 0x6DB1 y 0x6DDD. La lee 0x6D0F antes de saltar al interprete
+F 0x6d15 w
+D 0x6d1d 0x6d75 guion_lateral_completo  16 destinos: las dos columnas enteras, la izquierda desde 0x3801 y la derecha desde 0x381B
+D 0x6d75 0x6da1 guion_lateral_derecho  8 destinos, solo la columna de 0x381B
+D 0x6da1 0x6db1 guion_lateral_derecho_corto  4 destinos de un solo patron cada uno
+D 0x6db1 0x6ddd guion_lateral_izquierdo  8 destinos, solo la columna de 0x3801
+D 0x6ddd 0x6ded guion_lateral_izquierdo_corto  4 destinos de un solo patron cada uno
+
+# ======================================================================
+# LOS BLOQUES COMPRIMIDOS: mandatos del descompresor L_477B
+# ======================================================================
+# El formato es [destino de VRAM, word] y luego mandatos:
+#
+#   0x00           cierra
+#   0x01..0x7F     el byte que sigue, repetido esa cuenta
+#   0x80           destino de VRAM nuevo (dos bytes)
+#   0x81..0xFF     literal de (mandato & 0x7F) bytes
+#
+# Entrando por L_4781 el destino llega ya en HL y el bloque empieza
+# directamente en los mandatos, sin la cabecera de dos bytes.
+#
+# Los limites los da tools/rle.py ejecutando el descompresor, y el destino de
+# cada tramo dice a que tabla de la VRAM va, con el reparto de 0x47D6.
+# L_4735 y L_4739 son el mismo bloque descomprimido DOS o TRES veces seguidas,
+# con el destino subiendo 0x800 en cada vuelta: los tercios de SCREEN 2. El
+# `push de` / `pop de` de 0x473C devuelve DE al principio del bloque cada vez,
+# asi que es el MISMO bloque el que se pinta en los tres tercios.
+D 0x487e 0x488f rle_marco_del_menu  17 bytes -> 20 de NOMBRES en dos tramos, 0x394A y 0x396C. Lo carga 0x40E4
+D 0x48d5 0x4a0d rle_fuente  312 bytes -> 360 de PATRONES (45 tiles). Lo cargan DOS: 0x48C1 con L_4739 en 0x2080 -los tres tercios-, o sea los 45 patrones desde el tile 0x10, que es el codigo '0'; y 0x4B34 con L_4781 una sola vez en 0x3600
+D 0x4a61 0x4af8 rle_marcador  151 bytes -> 216 de PATRONES (27 tiles) en 0x2200, 0x2A00 y 0x3200. Lo carga 0x4A1B con L_4739
+D 0x4d5e 0x4ef8 rle_sprites_de_la_mesa  410 bytes -> 672 de PATRONES DE SPRITE en 0x1800 (21 sprites de 16x16). Lo carga 0x4B68
+D 0x4ef8 0x5021 rle_patrones_del_fondo  297 bytes -> 432 de PATRONES (54 tiles) en 0x2400 y 0x2C00. Lo carga 0x4AFB con L_4735
+D 0x5021 0x509c rle_color_del_fondo  123 bytes -> 432 de COLOR, cargado DOS veces: en 0x0400/0x0C00 por 0x4B07 y en 0x0600/0x0E00 por 0x4B10
+D 0x509c 0x5108 rle_nombres_del_menu  108 bytes -> 288 de NOMBRES en 0x38E0, nueve filas de 32. Lo carga 0x4B50
+D 0x70f0 0x733a rle_patrones_de_la_pista  586 bytes -> 744 de PATRONES (93 tiles) en 0x2200, 0x2A00 y 0x3200. Lo carga 0x702D con L_4739
+D 0x733a 0x7386 rle_color_de_la_pista  76 bytes -> 744 de COLOR, cargado DOS veces: en 0x0200 por 0x701B y en 0x0500 por 0x7024, las dos con L_4739
+D 0x7386 0x73a2 rle_patrones_de_la_red  28 bytes -> 40 de PATRONES (5 tiles) en 0x2750, 0x2F50 y 0x3750. Lo carga 0x7051
+D 0x73a2 0x73a7 rle_color_de_la_red  5 bytes -> 40 de COLOR en 0x0750, 0x0F50 y 0x1750. Lo carga 0x705A
+D 0x7d26 0x7ded rle_sprites_de_la_pelota  199 bytes -> 512 de PATRONES DE SPRITE en 0x1940 (16 sprites de 16x16). Lo carga 0x7073
+D 0x7df3 0x7fab rle_pantalla_de_titulo  440 bytes -> 768 de NOMBRES en 0x3800, o sea la pantalla ENTERA de 32x24. Lo carga 0x7DED
+
+# ======================================================================
+# LOS JUGADORES: fotogramas, y el SEGUNDO descompresor
+# ======================================================================
+# L_5E9B es otro descompresor RLE, con los mismos mandatos MENOS el 0x80: no
+# puede cambiar de destino a media faena. Y no recibe el bloque en DE, sino
+# que lo saca de un puntero:
+#
+#   5E9B  inc hl / ld e,(hl) / inc hl / ld d,(hl) / ex de,hl   HL = el bloque
+#   5EA0  ld e,(hl) / inc hl / ld d,(hl) / ex de,hl / inc de   HL = destino
+#
+# o sea que el bloque tiene la misma cabecera de destino que los de L_477B, y
+# el puntero que lleva a el va PEGADO detras de los datos de sprite de cada
+# fotograma. Cada fotograma es entonces: [dy, dx, patron] por sprite, un 0x81
+# si son menos de los que pide el bucle, y el puntero a sus patrones.
+#
+# De ahi salen los 40 bloques de 0x73A7..0x7D25, y la medida encaja por DOS
+# caminos independientes: encadenando los bloques desde 0x73A7 con el
+# descompresor, la cadena cae exactamente en 0x7D26 -donde empieza el bloque
+# siguiente, que ya se conocia- en 40 saltos; y los 40 punteros que llevan los
+# fotogramas son EXACTAMENTE esos 40 arranques, uno por uno. Todos escriben en
+# 0x1800 o en 0x18A0, que es la tabla de patrones de sprite de R6.
+D 0x5ec7 0x5ecc colores_del_jugador_cercano  5 bytes que 0x5DEB reparte de cuatro en cuatro desde 0xE086: el color de cada uno de sus cinco sprites
+F 0x5ec7 1
+D 0x5ecc 0x5ecf colores_del_jugador_lejano  3 bytes que 0x5DF6 reparte desde 0xE0A6
+F 0x5ecc 1
+D 0x5ecf 0x5ed7 tabla_de_trayectorias_cercano  4 entradas; la indexa 0x5A09 con (ix+4) enmascarado a 3 bits. La primera apunta a 0x5ED7, justo detras
+F 0x5ecf w
+D 0x5ed7 0x5f63 trayectorias_del_cercano  cuatro secuencias de desplazamientos con signo, cada una cerrada por el 0xA0 que busca el `cp 0a0h` de 0x5A1E; (ix+7) es el paso dentro de la secuencia
+D 0x5f63 0x5f6b tabla_de_trayectorias_lejano  las mismas 4 entradas para el otro jugador; la primera apunta a 0x5F6B
+F 0x5f63 w
+D 0x5f6b 0x5ff7 trayectorias_del_lejano  las cuatro secuencias del otro jugador, con los signos cambiados
+D 0x5ff7 0x601f tabla_de_fotogramas_cercano  20 entradas, indexada por (0xE163) desde 0x5E1D. La primera apunta a 0x6047, justo detras de las DOS tablas
+F 0x5ff7 w
+D 0x601f 0x6047 tabla_de_fotogramas_lejano  20 entradas, indexada por (0xE183) desde 0x5E65
+F 0x601f w
+D 0x6047 0x6149 fotogramas_del_cercano  20 fotogramas de hasta CINCO sprites: [dy, dx, patron] por sprite, el 0x81 que corta, y el puntero a sus patrones comprimidos
+D 0x6149 0x620f fotogramas_del_lejano  20 fotogramas de dos o tres sprites, con el mismo formato; el jugador del fondo se dibuja con menos
+D 0x73a7 0x7d26 patrones_de_los_jugadores  40 bloques comprimidos pegados, uno por fotograma, todos a la tabla de sprites: los 20 del cercano a 0x1800 y los 20 del lejano a 0x18A0. Los descomprime L_5E9B a traves del puntero del fotograma
+
+# ======================================================================
+# EL SONIDO
+# ======================================================================
+# 0x5307 indexa la tabla de periodos con la nota, saca UN byte, lo mete en HL
+# como palabra y lo desplaza a la izquierda tantas veces como diga (ix+5): un
+# `add hl,hl` es duplicar el periodo, o sea BAJAR una octava. Luego los dos
+# WRTPSG de 0x531C y 0x5322 escriben el periodo fino y el grueso.
+#
+# Que son doce semitonos temperados no es una suposicion: la razon entre notas
+# consecutivas sale entre 1,050 y 1,071, contra el 1,0595 de la duodecima raiz
+# de dos.
+D 0x532d 0x5339 periodos_del_psg  12 semitonos de la octava mas aguda: 106, 100, 95, 89, 84, 80, 75, 71, 67, 63, 60 y 56. Las octavas graves se sacan duplicando
+F 0x532d 1
+# La base declarada en 0x5150 es 0x5337, pero el indice nunca vale cero: la
+# entrada 1 cae en 0x5339 y es la primera de verdad. Cuantas hay lo fija el
+# encaje: la primera entrada apunta a 0x53A5, y 0x5339 + 54*2 = 0x53A5.
+D 0x5339 0x53a5 tabla_de_melodias  54 entradas; la indexa 0x5150 con base 0x5337 desde el indice 1. La primera apunta a 0x53A5, justo detras
+F 0x5339 w
+D 0x53a5 0x57c9 melodias  1060 bytes de guiones para el PSG; las 54 entradas de la tabla caen todas aqui dentro, y tres de ellas en el ultimo byte
+
+# ======================================================================
+# LOS ROTULOS SIN CABECERA
+# ======================================================================
+# Estos guiones no llevan el destino delante: se entra por L_476C o por
+# 0x475C, con HL ya puesto. Los limites los da la misma cuenta de siempre, el
+# 0xFF que cierra.
+D 0x4590 0x4596 tabla_de_ordinales  3 entradas: 0x4596, 0x459C y 0x45A2. La indexa 0x456B con (0xE053)
+F 0x4590 w
+D 0x4596 0x45a8 guiones_de_ordinales  "1ST", "2ND" y "3RD" en 0x398C, seis bytes cada uno: el destino, los tres patrones y el 0xFF
+F 0x4596 6
+D 0x6799 0x679d melodias_de_los_cantes  las melodias 8, 7, 11 y 9, una por cante, indexadas por el mismo B que elige el rotulo en 0x6692
+F 0x6799 1
+D 0x679d 0x67a5 tabla_de_cantes  4 entradas: 0x67A5, 0x67A9, 0x67AD y 0x67B1. La indexa 0x666E con el B que arma 0x664F a base de mirar los avisos del punto
+F 0x679d w
+D 0x67a5 0x67b4 guiones_de_cantes  los cuatro cantes del arbitro, sin destino delante: "LET", "NET", "OUT" e "IN"
+D 0x69b7 0x69bb tabla_de_guiones_a  2 entradas, 0x69BF y 0x69D0; la lee 0x699F
+F 0x69b7 w
+D 0x69bb 0x69bf tabla_de_guiones_b  2 entradas, 0x69E1 y 0x69F0; la lee 0x69A5
+F 0x69bb w
+D 0x69bf 0x69ff guiones_del_tanteo  los cuatro guiones que apuntan esas dos tablas, con destino delante y varios tramos cada uno
+D 0x440f 0x4412 patrones_de_los_sets  los indices 0x10, 0x11 y 0x12, o sea "0", "1" y "2". Los indexa 0x4413 y el que salga lo escribe WRTVRM
+
+# ======================================================================
+# EL VAIVEN DE LA PELOTA: la tabla de seno
+# ======================================================================
+# 0x6E99 y 0x6EA3 son la misma rutina -indexar una tabla con A y devolver el
+# byte- sobre dos arranques separados 31 posiciones, o sea un cuarto de onda:
+# de una sola tabla salen el seno y el coseno.
+#
+# Que es un seno esta medido, no supuesto: los 31 valores de 0x6EAD contra
+# 255*sin(i*90/31) se desvian 4,7 como mucho, sobre un recorrido de 255.
+D 0x6ead 0x6f09 tabla_de_seno  92 bytes: 31 valores subiendo de 12 a 255, 30 bajando, un cero, y 30 subiendo otra vez. 0x6E99 la lee desde 0x6EAD y 0x6EA3 desde 0x6ECC, un cuarto de onda mas alla
+F 0x6ead 1
+D 0x6f11 0x6f23 alturas_que_suben  18 valores de 0x19 a 0x24, que se aplanan al final. Los leen 0x659F y 0x65CB
+F 0x6f11 1
+D 0x6f23 0x6f35 alturas_que_bajan  18 valores de 0x23 a 0x18, la simetrica de la anterior. Los leen 0x65A9 y 0x65D5
+F 0x6f23 1
+D 0x6f5d 0x6f65 pasos_de_la_pelota  8 bytes que lee 0x6F51
+F 0x6f5d 1
+# Los numeros van de cuatro en cuatro porque con sprites de 16x16 cada patron
+# ocupa cuatro de los de 8x8. Las dos tablas son los CINCO TAMANOS de la
+# pelota, y quien elige entre ellos es la altura: 0x6B32 arma el indice
+# comparando (0xE104) con 0x45, 0x2F, 0x26 y 0x18. Cuanto mas alta y mas al
+# fondo, mas pequena se dibuja.
+D 0x6b8e 0x6b93 pelota_de_cerca  los patrones 0x38, 0x34, 0x30, 0x2C y 0x28: la pelota en su mitad de la mesa
+F 0x6b8e 1
+D 0x6b93 0x6b98 pelota_de_lejos  los patrones 0x4C a 0x3C, los mismos cinco tamanos para la otra mitad
+F 0x6b93 1
+
+# ======================================================================
+# LOS BLOQUES QUE SE COPIAN A LA RAM
+# ======================================================================
+# No hay que deducir su tamano: lo dice el `ld bc,N` del `ldir` que los mueve.
+D 0x4d0a 0x4d41 estados_de_salida  tres arranques a 21 bytes que 0x4CF6 copia a 0xE07C, SOLAPADOS entre si: 0x4D0A y 0x4D1B los elige el `bit 3` de (0xE003) en 0x4CE9, y 0x4D2C es el tercero. Van de 17 en 17, asi que cada copia se lleva cuatro bytes del siguiente
+D 0x4d41 0x4d44 tres_patrones  los 3 bytes que 0x4CFB manda a la VRAM 0x39D7 con L_4720
+F 0x4d41 1
+D 0x4d55 0x4d5e estado_inicial  los 9 bytes que 0x4D50 copia a 0xE070
+F 0x4d55 1
+
+# ======================================================================
+# LAS SECUENCIAS CERRADAS POR 0xA0
+# ======================================================================
+D 0x4c56 0x4c60 tabla_de_secuencias  5 entradas -0x4C60, 0x4C6E, 0x4C7E, 0x4CB6 y otra vez 0x4CB6-, indexada por (0xE1B0) desde 0x4C31; (0xE1B2) es el paso dentro de la secuencia y 0x4C3E lo adelanta
+F 0x4c56 w
+D 0x4c60 0x4ce3 secuencias_de_saque  las cinco secuencias, cada una cerrada por el 0xA0 que corta el recorrido; las dos ultimas entradas comparten la misma
+D 0x4c1b 0x4c23 rampa_de_ida_y_vuelta  0, 4, 8, 12, 16, 12, 8, 4: sube y baja por los mismos valores. La lee 0x4C02
+F 0x4c1b 1
+
+# ======================================================================
+# LOS QUE SOLO SE SABE QUIEN LEE
+# ======================================================================
+# De estos esta medido el limite -por quien los carga y por donde empieza el
+# siguiente- pero no se ha cerrado para que sirve cada byte. Se dice asi.
+D 0x43ef 0x43f1 modos_de_juego  0x40 y 0x60. Los indexa 0x43C3 con (0xE042) y el que salga va a (0xE002), que es donde el `bit 5` de 0x4514 y 0x4685 mira si se juega contra la maquina o entre dos
+F 0x43ef 1
+D 0x4b7a 0x4b87 datos_4b7a  13 bytes que carga 0x4B6E
+D 0x4b87 0x4b8f datos_4b87  8 bytes que carga 0x419B
+D 0x4bc3 0x4bf1 rotulo_de_dos_filas  el rotulo del menu, 23 columnas en dos filas de 23 bytes. 0x4BA0 saca una columna mas en cada pasada, y el `ld a,017h` de 0x4BB2 -que son 23- es lo que salta a la segunda fila. Cada mitad empieza con nueve ceros: por eso el rotulo entra desde la izquierda
+F 0x4bc3 23
+D 0x5886 0x58ae ajustes_por_nivel  0x5849 copia OCHO bytes desde 0x5886 mas TRES veces el nivel, asi que los cinco tramos se solapan
+F 0x5886 8
+D 0x58ae 0x58b3 un_byte_por_nivel  5 bytes, uno por nivel; 0x5868 saca el suyo y lo deja en (0xE1A9)
+F 0x58ae 1
+D 0x58b3 0x58bd posiciones_por_nivel  5 pares indexados por el nivel en 0x5819; el par va igual a los dos jugadores
+F 0x58b3 2
+D 0x58bd 0x58c7 otro_par_por_nivel  5 pares; de cada uno 0x5859 usa solo el primer byte, y lo escribe DOS veces
+F 0x58bd 2
+D 0x58c7 0x58cf atributos_de_sprite  los 8 bytes de arranque, que 0x57F5 y 0x5800 copian iguales a los dos jugadores
+F 0x58c7 1
+D 0x58cf 0x58d7 colores_de_sprite  8 bytes que 0x5875 copia a 0xE0C0
+F 0x58cf 1
+D 0x5c58 0x5c5c datos_5c58  4 bytes que carga 0x5BB9
+D 0x5c5c 0x5c5e datos_5c5c  2 bytes que carga 0x5BC5
+D 0x5c5e 0x5c63 datos_5c5e  5 bytes que cargan 0x5C1B y 0x5D18
+D 0x5c63 0x5c6d datos_5c63  10 bytes que carga 0x5C02
+D 0x629f 0x62a5 saque_por_la_izquierda  las tres coordenadas de la pelota al sacar -0x26, 0x78 y 0x34-, que 0x6252 copia a (0xE100)
+F 0x629f w
+D 0x62a5 0x62ab saque_por_la_derecha  las mismas dos ultimas con 0x9D de x: el otro lado de la mesa. Lo elige (0xE140) en 0x6243
+F 0x62a5 w
+D 0x6a3b 0x6a3f tabla_de_ternas_a  2 entradas, 0x6A43 y 0x6A47; la lee 0x6A05
+F 0x6a3b w
+D 0x6a3f 0x6a43 tabla_de_ternas_b  2 entradas, 0x6A4B y 0x6A4F; la lee 0x6A08
+F 0x6a3f w
+D 0x6a43 0x6a53 cuatro_ternas  cuatro registros de cuatro bytes que apuntan las dos tablas de arriba
+F 0x6a43 4
+D 0x6a9c 0x6aa8 velocidades_del_golpe  6 pares que 0x6A85 indexa con la direccion sacada del mando; el par va a (0xE112), la velocidad de salida de la pelota
+F 0x6a9c 2
+D 0x6aa8 0x6ab4 alcance_del_golpe  6 alcances y 6 valores hermanos, que 0x6A53 lee con el mismo indice y con el indice mas seis
+F 0x6aa8 6
+
+# ======================================================================
+# LAS TRAYECTORIAS DE LA PELOTA
+# ======================================================================
+# La tabla y sus registros encajan al byte por los dos lados: 0x5D37 + 30*2 =
+# 0x5D73, que es justo lo que dice su primera entrada; y el ultimo registro
+# acaba en 0x5DEB, que es donde vuelve a empezar el codigo.
+# Las 30 son CINCO NIVELES por SEIS ZONAS, y no es una suposicion: 0x5CBC
+# multiplica el nivel por doce -`add a,a / add a,c / add a,a / add a,a`- y le
+# suma la zona doblada, o sea seis entradas de palabra por nivel. Y las zonas
+# son las seis que separa 0x5C9E comparando la pelota con 0x40, 0x72, 0x80,
+# 0x8C y 0x98: por donde le llega, decide adonde la manda.
+D 0x5d37 0x5d73 tabla_de_trayectorias  30 entradas -5 niveles por 6 zonas-, desde 0x5D73 hasta 0x5DE7. La lee 0x5CC4
+F 0x5d37 w
+D 0x5d73 0x5deb trayectorias  30 registros de cuatro bytes, todos entre 0x18 y 0x24: adonde apunta la maquina desde cada zona y en cada nivel
+F 0x5d73 4
+
+# ======================================================================
+# EL FINAL DEL CARTUCHO
+# ======================================================================
+# Los ultimos quince bytes son la marca oculta de Konami que descubrio Manuel
+# Pazos: el titulo en katakana, su longitud y el numero de referencia. Aqui
+# son doce bytes que se leen コナミのピンポン -Konami no Ping Pong-, el 0x0C
+# de la longitud y el 0x31 de RC-731.
+D 0x7fab 0x7ff1 relleno  70 bytes a 0xFF, lo que quedaba libre del cartucho
+F 0x7fab 16
+D 0x7ff1 0x8000 marca_oculta_de_konami  el titulo en katakana (12 bytes), su longitud 0x0C y el 0x31 de RC-731
+F 0x7ff1 1
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+B 0x4019 ===== EL LATIDO: el gancho de la interrupcion =====
+L 0x4019 latido  H.KEYI: todo el juego cuelga de aqui, una vez por cuadro
+C 0x4019 RDVDP: leer el estado del VDP es lo que ACEPTA la interrupcion
+C 0x401d con la interrupcion cerrada, el sonido: es lo unico que no puede perder un cuadro
+C 0x4020 (0xE005) es el cerrojo de reentrada
+C 0x4023 si ya hay un cuadro dentro, no se entra otra vez
+C 0x4027 echa el cerrojo
+C 0x4028 y lo demas ya puede correr con la interrupcion abierta
+C 0x402c (0xE04B): el aviso de que hay trabajo pendiente de VRAM
+C 0x4030 solo si lo hay
+C 0x4033 el grueso del cuadro
+C 0x403a se vuelve a mirar, porque el grueso ha podido dejar mas trabajo
+C 0x403d y por ultimo la escena que toque
+C 0x4042 suelta el cerrojo
+C 0x4045 segunda lectura del estado del VDP
+C 0x4048 el bit 7 es el aviso de interrupcion
+C 0x404a si estaba puesto, otra pasada de sonido
+L 0x404f pone_registro_del_vdp  escribe un registro del VDP, y de paso borra su copia
+C 0x4052 0x40F8 cae dentro de la propia ROM, o sea que esta escritura no llega a ninguna parte
+C 0x4055 WRTVDP con lo que traiga BC
+B 0x4058 ===== Las dos sumas de 8 sobre 16 bits =====
+L 0x4058 suma_a_hl  HL = HL + A, con el acarreo a mano
+C 0x405a si no hubo acarreo ya esta
+C 0x405b y si lo hubo, sube el byte alto
+L 0x405d suma_a_de  DE = DE + A, la misma cuenta sobre el otro par
+B 0x4062 ===== EL DESPACHADOR, con la tabla pegada detras =====
+L 0x4062 despacha  salta a la entrada A de la tabla que venga pegada detras del `call`
+C 0x4062 el indice se dobla porque las entradas son palabras
+C 0x4063 el `pop` recupera la direccion de retorno, que ES la tabla
+C 0x4064 y se le suma el indice
+C 0x4067 saca la entrada
+C 0x406b y salta ahi, sin volver: la tabla se ha comido el retorno
+B 0x406c ===== INIT: lo unico que hace es enganchar la interrupcion =====
+L 0x406c init  la direccion que trae la cabecera del cartucho
+C 0x406f un 0xC3, o sea un `jp`, en el primer byte de H.KEYI
+C 0x4074 y detras la direccion del latido
+C 0x407a la pila, al final de la RAM que usa el juego
+C 0x4086 borra los 0x400 bytes de variables de 0xE000 en adelante
+C 0x408c echa el cerrojo ANTES de tocar el VDP
+C 0x408f prepara la pantalla: registros del VDP y VRAM a cero
+C 0x4093 y lo suelta
+C 0x4096 acepta la interrupcion que hubiera pendiente
+C 0x409a a partir de aqui no hace nada mas: el juego entero corre en la interrupcion
+B 0x409f ===== La escena del cuadro =====
+L 0x409f corre_la_escena  mira el estado y despacha la escena que toque
+C 0x40a2 el bit 6 de (0xE002) distingue la partida de la presentacion
+C 0x40ab (0xE047) es el contador que la escena va a mirar
+C 0x40b1 (0xE003) cuenta cuadros y no lo pone a cero nadie: es el reloj de fondo
+C 0x40b2 (0xE000) es la escena
+C 0x40b5 la 7 es la unica que necesita continuacion
+C 0x40bd apila 0x43A7 como direccion de retorno de la escena
+C 0x40c6 y despacha con la tabla que viene pegada aqui detras
+B 0x40d9 ===== LAS ESCENAS: una cadena de `djnz` por subescena. 0x40C1 carga BC de (0xE000): C es la escena y B la subescena. La tabla despacha por la escena, y ya dentro la subescena se elige BAJANDO por una cadena de `djnz`, cada uno de dos bytes: el trozo que corre es aquel en que B llega a cero =====
+C 0x40d9 subescena 0 si B ya venia a cero; si no, al siguiente escalon
+C 0x40db (0xE003) es el reloj de cuadros
+C 0x40de el bit 0 al acarreo
+C 0x40df o sea que esto solo corre uno de cada dos cuadros
+C 0x40e4 el marco del menu, comprimido
+C 0x40eb y a la escena siguiente
+C 0x40ee subescena 1
+C 0x40f0 (0xE004) es la cuenta atras de la subescena
+C 0x40f4 mientras no llegue a cero, no pasa nada
+C 0x40fa subescena 2: monta la pantalla entera; registros del VDP y VRAM a cero
+C 0x40fd borra la tabla de nombres
+C 0x4100 los patrones
+C 0x4103 y el resto
+C 0x4108 subescena 3, que ademas se usa de tejado para las de abajo
+C 0x410d los rotulos del tanteo
+C 0x4110 el sonido
+C 0x4114 subescena 3
+C 0x4119 su cuenta atras
+C 0x411f subescena 4
+C 0x4124 uno de cada dos cuadros
+C 0x412a si aun no ha terminado, no sigue
+C 0x412e melodia 0x0F
+C 0x4134 (0xE1B0) es la secuencia y (0xE1B1) el paso dentro de ella
+C 0x4145 subescena 5
+C 0x414c 0x40 marca la escena de destino
+C 0x4151 subescena 6
+C 0x415d subescena 7
+C 0x4162 si el movimiento no ha acabado, se espera
+C 0x4169 y se pasa a la secuencia siguiente
+C 0x416f subescena 8
+C 0x417a melodia 0x84
+C 0x4183 el paso actual
+C 0x4189 y adelanta uno
+C 0x418b nueve pasos y se acaba
+L 0x4196 escribe_ocho_patrones  vuelca los 8 bytes de 0x4B87 en la VRAM 0x3868
+C 0x4198 destino en la tabla de nombres
+C 0x41a1 subescena 9
+C 0x41a6 (0xE07A) y (0xE074) son la posicion de la pelota en la demostracion
+C 0x41a9 si ya esta en 0x18, este golpe ya se dio
+C 0x41b0 solo se golpea con la pelota entre 0x15 y 0xA0
+C 0x41c4 melodia 0x11: el golpe
+C 0x41c9 espera a que el movimiento termine
+C 0x41cf melodia 3
+C 0x41d2 y a la secuencia siguiente
+C 0x41d8 subescena 10
+C 0x41e5 melodia 5
+C 0x41f1 subescena 11
+C 0x41fb melodia 6
+C 0x4203 subescena 12: la espera larga antes de repetir
+C 0x4208 uno de cada dos cuadros
+C 0x420b (0xE075) es la cuenta de la espera
+C 0x4210 y hasta 0xFD no se sale
+C 0x4215 subescena 13
+C 0x421d subescena 14: la partida de verdad empieza aqui
+C 0x4220 melodia 0x34
+C 0x422f (0xE045) y (0xE046) son los dos tanteos, a cero
+C 0x4235 0x40 de espera, el doble de lo normal
+C 0x423a subescena 15
+C 0x423f (0xE052) mientras no llegue a cero, la pantalla sigue montandose
+C 0x4245 vuelve a la escena 0
+C 0x424a con 0x20 cuadros de espera
+C 0x4256 apaga el bit 5 de (0xE002): se vuelve a un jugador
+B 0x425d ===== Los dos remates que cierran casi todas las subescenas =====
+L 0x425d espera_y_avanza  deja A cuadros de espera en (0xE004) y cae en avanzar
+L 0x4260 avanza_subescena  sube (0xE001), que es el escalon del `djnz`
+C 0x4265 subescena 16
+C 0x426d el bit 3 de la propia cuenta atras hace parpadear
+C 0x4279 FILVRM: borra 16 bytes de la VRAM
+C 0x427c subescena 17
+C 0x4289 subescena 18
+C 0x4293 subescena 19: vuelve a montar la pantalla del titulo
+C 0x4298 la pantalla de nombres entera, comprimida
+B 0x42a6 ===== EL MENU: elegir nivel y empezar =====
+C 0x42a6 subescena 20, la que atiende el menu
+C 0x42ab el mando del jugador 1
+C 0x42af y el del 2, sumados: en el menu vale cualquiera de los dos
+C 0x42b6 (0xE040) guarda lo de antes, para quedarse solo con lo que se ACABA de pulsar
+C 0x42ba si no se ha pulsado nada nuevo, nada que hacer
+C 0x42bc los bits 4 y 5 son los botones
+C 0x42be con boton, a empezar
+C 0x42c0 (0xE044) es el nivel elegido
+C 0x42c3 el bit 3 es arriba
+C 0x42ca y el bit 2, abajo
+C 0x42d1 melodia 1: el chasquido del menu
+C 0x42d5 pasado el ultimo vuelve al primero
+C 0x42dc y por debajo del primero, al ultimo: cinco niveles, del 0 al 4
+C 0x42e5 0x5108 con A: el aviso corto, no una melodia entera
+C 0x42f5 0x60 cuadros de espera, el triple de lo normal
+C 0x42fa subescena 21
+C 0x4307 0xA0 cuadros: la espera mas larga de todas
+C 0x430c subescena 22
+B 0x431b ===== Cambiar de escena =====
+L 0x431b avanza_escena  sube (0xE000) y pone la subescena a cero
+C 0x431f la subescena vuelve al primer escalon del `djnz`
+C 0x4324 subescena 23
+C 0x4330 el bit 5 de (0xE002): dos jugadores
+C 0x4334 (0xE053) es el set que se juega
+C 0x433c el rotulo CHANGE COURT
+C 0x433f 0x50 cuadros para leerlo
+C 0x4347 (0xE00D) es el aviso de que la partida ha terminado
+C 0x434e subescena 24
+C 0x4354 apaga el bit 6 de (0xE002): se sale de la partida
+B 0x47e3 ===== EL CUADRO: leer los mandos =====
+L 0x47e3 lee_los_mandos  el mando de cada jugador, y de cada uno lo que se acaba de pulsar
+C 0x47e3 primero el del jugador 2, que puede ser la maquina
+C 0x47e6 el joystick del 1
+C 0x47ea y su teclado, sumados: vale cualquiera de los dos
+C 0x47f1 el bit 6 de (0xE002) distingue partida de presentacion
+C 0x47f3 fuera de la partida, la maquina juega sola
+B 0x47f9 ===== El filtro de las pulsaciones NUEVAS =====
+L 0x47f9 guarda_y_filtra  deja el estado crudo en (HL) y en (HL-1) solo lo que ACABA de pulsarse
+C 0x47f9 lo que habia antes
+C 0x47fa y guarda lo de ahora
+C 0x47fb el XOR deja lo que ha cambiado
+C 0x47fc y el AND, solo lo que ha cambiado A PULSADO: los flancos de subida
+C 0x47fe el resultado va un byte por debajo del estado crudo
+B 0x4800 ===== El joystick, por el PSG =====
+L 0x4800 lee_joystick_1  0x8F en el registro 15 elige el puerto 1
+C 0x4802 entrada alterna con el selector ya puesto en E: 0xCF es el puerto 2
+C 0x4804 el registro 15 del PSG es el de control de los puertos
+C 0x480a y el 14 devuelve lo que hay en el elegido
+C 0x480e las lineas del mando estan a cero cuando se pulsan, asi que se invierte
+C 0x480f cuatro direcciones y dos botones
+B 0x4812 ===== El teclado del jugador 1, disfrazado de joystick =====
+L 0x4812 lee_teclado_1  arma con las flechas y el espacio el MISMO mapa de bits que el joystick
+C 0x4814 la fila 7 de la matriz
+C 0x4818 de ahi sale el boton, al bit 5
+C 0x481e la fila 8 son las cuatro flechas
+C 0x4825 arriba
+C 0x482d y las dos de los lados
+C 0x4833 y abajo: al colocarlas asi, el resto del juego no distingue mando de teclado
+L 0x4837 lee_mando_2  el del segundo jugador, que segun (0xE002) es una persona o la maquina
+C 0x483a el bit 5 dice si hay dos jugadores
+C 0x483e con uno solo, quien mueve es la maquina
+C 0x4843 0xCF: el segundo puerto de joystick
+C 0x484d y el suyo se guarda en (0xE049)
+B 0x4852 ===== El teclado del jugador 2 =====
+L 0x4852 lee_teclado_2  las teclas del segundo jugador, de cuatro filas distintas
+C 0x4854 cada fila aporta un bit, y el `rl b` los va apilando
+C 0x487a otra vez, pulsado es cero
+C 0x487b cinco bits: cuatro direcciones y un boton
+B 0x48a6 ===== La fuente =====
+L 0x48a6 monta_la_fuente  los quince patrones sueltos y luego los 45 de la fuente
+C 0x48ab quince tiles
+C 0x48b3 rellena los ocho bytes de un tile con el mismo valor
+C 0x48b9 y pasa al tile siguiente, ocho bytes mas alla
+C 0x48bd el valor de relleno sube de uno en uno
+C 0x48c1 la fuente comprimida
+C 0x48c4 a 0x2080, o sea al tile 0x10 de PATRONES, que es el codigo del '0'
+C 0x48c7 y en los TRES tercios de la pantalla
+C 0x48ca 0xF0: tinta blanca sobre fondo transparente
+C 0x48cc 0x0080 es el COLOR de esos mismos tiles, porque en este cartucho el color va abajo
+C 0x48cf 360 bytes, los mismos que ocupan los 45 patrones
+B 0x46ac ===== El cambio de campo del tercer set =====
+L 0x46ac mira_cambio_de_campo  decide si toca cambiar de lado, y lo anota en (0xE04B)
+C 0x46af sin dos jugadores no hay cambio de campo
+C 0x46b3 (0xE053) es el set
+C 0x46b6 en el primero, nada
+C 0x46b9 en el segundo, siempre
+C 0x46bc en el tercero solo cuando se cumple la condicion
+C 0x46c4 (0xE132) y (0xE133) son los dos tanteos del set
+C 0x46c8 el tanteo va en BCD -0x6760 lo sube con `daa`-, asi que 0x10 son DIEZ puntos: la regla real del cambio de lado en el set decisivo
+C 0x46d1 y una sola vez: (0xE14E) es el pestillo
+C 0x46db invertir (0xE140) es lo que pone a cada jugador en el otro lado
+C 0x46e7 (0xE04B) es lo que el latido mira dos veces por cuadro
+B 0x46eb ===== Y con el campo se cambian los mandos =====
+L 0x46eb intercambia_los_mandos  permuta los dos bytes de mando de un jugador con los del otro
+C 0x46eb el mando del jugador 1
+C 0x46ee y el del 2
+C 0x46f1 dos bytes cada uno: el estado crudo y las pulsaciones nuevas
+C 0x46f6 el intercambio, por el clasico rodeo con C
+C 0x46fa al terminar, cada jugador maneja al muneco del otro lado
+L 0x46fd borra_la_pantalla  deja la tabla de nombres a cero
+C 0x4703 768 bytes: las 24 filas de 32
+B 0x470a ===== Los dos accesos crudos al puerto de la VRAM =====
+L 0x470a prepara_escritura  SETWRT y el puerto de escritura guardado en C'
+C 0x470f la BIOS tiene el puerto de datos del VDP en 0x0006
+C 0x4712 en C', para que el bucle solo tenga que hacer `out (c),a`
+L 0x4716 prepara_lectura  la gemela: SETRD y el puerto de lectura de 0x0007
+L 0x4720 copia_a_vram  LDIRVM con los pares al derecho
+L 0x4724 rellena_tres_tercios  FILVRM el mismo valor en los tres tercios de la pantalla
+C 0x472b cada tercio esta 0x800 mas arriba
+L 0x4735 descomprime_dos_tercios  el mismo bloque en dos tercios
+L 0x4739 descomprime_tres_tercios  y aqui en los tres
+C 0x473c el `push de` es lo que hace que se repita el MISMO bloque: DE vuelve al principio
+L 0x4749 copia_tres_tercios  como 0x473B pero copiando en crudo, no descomprimiendo
+C 0x4749 la cuenta va en B', para no pisar el B de quien llama
+B 0x4764 ===== EL INTERPRETE DE ROTULOS, con sus cuatro puertas =====
+L 0x4764 pinta_rotulo  lee el destino del guion y escribe los patrones tal cual
+C 0x4764 la mascara: 0xFF deja pasar el byte
+C 0x4767 los dos primeros bytes del guion son el destino en la VRAM
+C 0x476b y DE queda en el primer patron
+C 0x476c el bucle: un byte del guion
+C 0x476f 0xFF, o sea B+1 = 0: fin del guion
+C 0x4772 0xFE: otro destino, se vuelve a leer la cabecera
+C 0x4774 la mascara. Con C=0 esto escribe ceros, y el mismo guion BORRA el rotulo
+C 0x4775 un patron, en la tabla de nombres
+B 0x477b ===== EL DESCOMPRESOR =====
+L 0x477b descomprime  saca el destino del propio bloque y lo suelta en la VRAM
+C 0x477b los dos primeros bytes son el destino
+C 0x4781 aqui se entra con el destino ya en HL, sin cabecera; y deja el puerto del VDP en C'
+C 0x4784 un mandato
+C 0x4786 el 0x00 cierra el bloque
+C 0x4789 el bit 7 separa las dos clases de mandato
+C 0x478c sin bit 7, es repeticion
+C 0x478f el 0x80 pelado: cambiar de destino a media faena
+C 0x4791 y con bit 7, un literal de tantos bytes
+C 0x4795 al puerto, sin pasar por la BIOS: un `out` por byte
+C 0x479c la repeticion lee UN byte
+C 0x479f y lo suelta B veces
+B 0x47a6 ===== El espejo =====
+L 0x47a6 invierte_los_bits  devuelve A con sus ocho bits del reves
+C 0x47aa saca por la derecha de C y mete por la izquierda de A: eso es dar la vuelta al byte
+C 0x47ad ocho veces, un bit por vuelta
+B 0x47b1 ===== Preparar la pantalla desde cero =====
+L 0x47b1 monta_la_pantalla  calla el sonido, borra los 16 KB de VRAM y carga los registros
+C 0x47b6 melodia 0x34
+C 0x47be 0x4000 bytes: la VRAM ENTERA
+L 0x47c5 carga_los_registros  vuelca los ocho bytes de 0x47D6 en R0..R7
+C 0x47ca empezando por el registro 0
+C 0x47d1 el registro siguiente
+L 0x47de pon_el_color_de_fondo  escribe el registro 7 con lo que traiga B
+B 0x7018 ===== MONTAR LA PISTA =====
+L 0x7018 monta_la_pista  el color, los patrones, el espejo y la red
+C 0x7018 el color de la pista, a 0x0200
+C 0x7024 y el mismo bloque otra vez a 0x0500: dos bandas de color
+C 0x702d los patrones de la pista, 93 tiles en los tres tercios
+C 0x7033 y ahora el espejo: origen 0x2A00
+C 0x7036 destino 0x2500
+C 0x703e 0x300 bytes, o sea 96 tiles
+C 0x7041 copiar dando la vuelta a cada byte
+C 0x7045 solo sube el destino: el origen es SIEMPRE el mismo, asi que el reflejo se repite en los tres tercios
+C 0x704e la red: cinco tiles de patron
+C 0x7057 y su color
+B 0x7060 ===== La copia reflejada =====
+L 0x7060 copia_reflejando  copia BC bytes de VRAM a VRAM dandole la vuelta a cada uno
+C 0x7060 lee un byte de la VRAM en HL
+C 0x7063 le da la vuelta a los ocho bits
+C 0x7067 y lo escribe en DE
+C 0x706b asi la mitad de la pista se dibuja una vez y la otra sale de reflejarla
+L 0x7073 carga_sprites_de_la_pelota  los 16 sprites comprimidos, a 0x1940
+L 0x7079 arranca_la_partida  monta pista, sprites, marcador y pantalla de nombres
+C 0x707b (0xE052) marca que la pantalla se esta montando
+C 0x7087 la pantalla de nombres entera
+C 0x708d y el sonido
+L 0x7090 cuenta_el_montaje  baja el contador de montaje hasta que se pasa de 3
+C 0x7097 tres pasos, y a cero
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+B 0x5108 ===== EL SONIDO: arrancar una melodia =====
+L 0x5108 suena_si_hay_partida  como arranca_melodia, pero calla fuera de la partida
+C 0x510d el bit 6 de (0xE002): solo dentro de la partida
+L 0x5113 arranca_melodia  pone en marcha la melodia A, respetando la que ya suene
+C 0x5113 con la interrupcion cerrada, que esto lo llama tanto el latido como el juego
+L 0x5121 reparte_melodia  elige a que canales va la melodia y si puede pisar a la que suena
+C 0x5121 el numero de melodia
+C 0x5122 dos canales por omision
+C 0x5127 los 6 bits bajos son el numero; los altos, banderas
+C 0x5129 por debajo de 9 es un efecto corto
+C 0x512d de 9 a 0x18, dos canales
+C 0x5131 y de 0x19 en adelante, tres
+C 0x5134 los efectos cortos van a su propio bloque de canal
+C 0x5138 lo que ya esta sonando
+C 0x513b por encima de 0x25 es que no suena nada
+C 0x5142 y si la nueva tampoco es una melodia de verdad, entra sin mas
+C 0x5149 la prioridad de la que suena
+C 0x514d y si la nueva es MENOR, no la pisa: quien manda es el numero mas alto
+C 0x514f el indice se dobla porque la tabla es de palabras
+C 0x5156 retrocede a los dos bytes de control del canal
+C 0x5158 duracion 1: que empiece en el cuadro siguiente
+C 0x515e y anota el numero, que es la prioridad
+C 0x5160 el puntero al guion de la melodia, byte a byte
+C 0x5166 cada canal ocupa 11 bytes
+C 0x516c y se repite para los dos o tres canales
+B 0x516f ===== El mezclador =====
+L 0x516f pon_el_mezclador  abre o cierra el tono y el ruido del canal C en el registro 7
+C 0x516f (0xE03D) es la copia del registro 7, que no se puede leer del PSG
+C 0x5174 el canal 1 no necesita desplazar
+C 0x5179 tres bits por canal
+C 0x517f con D distinto de 1, se APAGA el bit
+C 0x5183 y si no, se enciende
+C 0x5184 el bit 2 apaga el tono del tercer canal
+L 0x518c escribe_el_mezclador  vuelca la copia de (0xE03D) al registro 7
+B 0x5195 ===== El latido del sonido =====
+L 0x5195 late_el_sonido  una pasada por los tres canales, una vez por cuadro
+C 0x5198 primero deja el mezclador como quedo
+C 0x519b el canal 1
+C 0x519d el bloque de estado del primer canal
+C 0x51a2 tres canales
+C 0x51a4 y cada bloque esta 15 bytes mas alla
+C 0x51a8 (ix+2) a cero es canal libre
+C 0x51ae libre: silencio
+C 0x51b3 ocupado: seguir la melodia
+C 0x51b6 dos registros del PSG por canal
+L 0x51be sigue_la_melodia  gasta un cuadro del canal y ejecuta lo que toque del guion
+C 0x51c9 con el bit 7 puesto, el canal esta en un efecto
+C 0x51cc la duracion de la nota
+C 0x51cf mientras dure, no se lee nada mas del guion
+C 0x51d0 el puntero dentro del guion
+C 0x51d7 0xFE y 0xFF cierran
+B 0x51e3 ===== Los mandatos del guion de melodia =====
+C 0x51e3 el 0x20 pelado es "usa envolvente"
+C 0x51e8 y entonces el volumen lo lleva el hardware
+C 0x51ef registro 12 del PSG: la parte alta del periodo de la envolvente
+C 0x51f7 registro 11: la parte baja
+C 0x5201 registro 13: la FORMA de la envolvente
+C 0x5208 con el nibble alto a 2, lo que trae es una duracion
+C 0x5211 y se guarda en (ix+1), que es de donde salen las notas siguientes
+C 0x5217 nibble alto 1: ruido
+C 0x521e los cinco bits bajos son el periodo del ruido
+C 0x5222 el canal 3 es el unico que lo usa asi
+C 0x5227 el bit 4 decide si el periodo se corrige
+C 0x5233 registro 6: el periodo del ruido
+C 0x5238 y se abre el paso del ruido en el mezclador
+C 0x523e el bit 6 de (ix+2) es el modo especial del canal
+C 0x5258 el XOR separa el nibble bajo, quedando el alto en B
+C 0x525c guarda el guion por donde va
+C 0x5260 y suelta el periodo, aqui tomado tal cual y no de la tabla de notas
+C 0x5264 los cuatro desplazamientos suben el nibble alto al bajo
+C 0x5268 gasta un paso de la nota
+C 0x5273 recarga la duracion de (ix+1)
+C 0x527b tres cuadros mas para el corte de la nota
+L 0x5280 calla_el_canal  cierra el mezclador y deja el canal libre
+C 0x5282 D=1 abre... aqui cierra: el canal queda mudo
+C 0x5286 (ix+2) a cero: canal libre
+C 0x5295 (ix+8) es el corte de la nota
+C 0x529b cuando alcanza a la duracion, la nota se apaga
+C 0x52a8 (ix+7) es el volumen, que va bajando solo
+C 0x52ac por debajo de cero no baja: la nota ya esta muerta
+B 0x52b1 ===== El volumen =====
+L 0x52b1 pon_el_volumen  escribe H en el registro de volumen del canal C
+C 0x52b2 C vale 1, 3 o 5, y esta cuenta lo convierte en el registro 8, 9 o 10
+B 0x52b9 ===== Los mandatos que ajustan y no suenan =====
+C 0x52bc nibble alto D: cambia el multiplicador de duracion
+C 0x52c3 (ix+0x0A), por el que se multiplican las duraciones que vengan
+C 0x52c8 nibble alto F: el volumen de arranque
+C 0x52d3 nibble alto E: la octava
+C 0x52d9 (ix+5), que es cuantas veces se duplica el periodo
+C 0x52de lo que queda es el nibble bajo: cuantas veces se suma el multiplicador
+C 0x52e6 la duracion sale de sumar el multiplicador tantas veces
+C 0x52eb y se guarda como duracion del canal
+B 0x52ee ===== Y la nota =====
+C 0x52ee el byte de la nota
+C 0x52ef primero deja anotado por donde va el guion
+C 0x52f4 el nibble alto es la nota, del 0 al 12
+C 0x52f9 el 12 es el silencio: no toca nota, solo deja pasar el tiempo
+C 0x52fd y si suena, el volumen arranca del de (ix+6)
+C 0x5307 la tabla de los doce periodos
+C 0x530d un solo byte: la octava mas aguda cabe en ocho bits
+C 0x5310 (ix+5) es la octava
+C 0x5317 y cada duplicacion del periodo baja una octava
+B 0x531a ===== Los dos registros de tono =====
+L 0x531a pon_el_tono  parte alta y baja del periodo, a los dos registros del canal
+C 0x531b el byte alto primero
+C 0x5320 y el registro de debajo lleva el bajo
+L 0x5325 guarda_el_guion  deja en (ix+3) por donde va el guion de este canal
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+B 0x57c9 ===== PREPARAR A LOS DOS JUGADORES =====
+L 0x57c9 prepara_a_los_jugadores  borra el estado, reparte posiciones y saca los valores que dependen del nivel
+C 0x57c9 0x200 bytes de estado de juego, a cero
+C 0x57df 0xE0 en los 0x80 bytes de atributos: todos los sprites, fuera de la pantalla
+C 0x57e6 con dos jugadores no se toca el lado
+C 0x57ea y con uno, solo en el primer set
+C 0x57f2 (0xE140) a 0xFF: el lado de cada uno
+C 0x57f5 los mismos ocho bytes para los dos jugadores
+C 0x5803 el segundo, a 0xE09C
+C 0x580b el jugador cercano arranca en x=0x23
+C 0x5812 y=0x78
+C 0x5819 la tabla de pares indexada por el nivel
+C 0x581c (0xE047) es el nivel: el elegido en el menu, o el 3 fijo en la demostracion
+C 0x581f dos bytes por nivel
+C 0x5826 y el par va a los dos jugadores por igual
+C 0x5833 el lejano arranca en x=0xA0, al otro lado
+C 0x5846 aqui el nivel cuenta de tres en tres
+C 0x5849 ocho bytes desde 0x5886 + 3 veces el nivel: los tramos se SOLAPAN
+C 0x5858 y el nivel doblado se guarda para las dos tablas siguientes
+C 0x5862 el mismo byte va a las dos posiciones: los dos jugadores empiezan igual
+C 0x5872 y por ultimo, los colores de los sprites
+C 0x5882 (0xE1A0) a 2: el fotograma de partida
+B 0x58d7 ===== EL CUADRO DE LA PARTIDA =====
+L 0x58d7 corre_el_punto  un cuadro de juego: mandos, jugadores, pelota y sprites
+C 0x58d7 (0xE130) es la fase del punto
+C 0x58e6 en esas fases se borran los mandos de los dos: nadie manda mientras
+C 0x58f2 y en estas otras tampoco se mueve a nadie
+C 0x5904 el jugador cercano
+C 0x5907 el lejano
+C 0x590a los sprites a la VRAM
+C 0x590d y la pelota
+C 0x5916 el reparto de subfases del punto
+B 0x5919 ===== Los sprites a la pantalla =====
+L 0x5919 vuelca_los_sprites  los 0x80 bytes de 0xE070 a la tabla de atributos, en 0x3B00
+C 0x5919 0x3B00 es donde R5 pone los atributos de sprite
+C 0x591f 32 sprites de cuatro bytes
+B 0x5925 ===== Mover al jugador cercano =====
+L 0x5925 mueve_al_cercano  traduce su mando en direccion, y de ahi en fotograma
+C 0x5925 su bloque de estado
+C 0x5929 y su mando
+C 0x5931 (0xE165) distinto de cero: esta en mitad de un golpe, y manda la trayectoria
+C 0x5935 la tabla de trayectorias del cercano
+C 0x594e en la fase 1 solo se admiten dos de las direcciones
+C 0x5952 los bits 2 y 3, o sea izquierda y derecha
+C 0x5957 guarda la posicion de este cuadro, para saber luego cuanto se ha movido
+C 0x5968 deja solo los bits que sobreviven al cuadro
+C 0x597b sin la condicion, tampoco se admite el bit 3
+C 0x597d el mando se va desgranando bit a bit
+C 0x5980 arriba
+C 0x598a abajo
+C 0x5993 y el golpe
+C 0x59a6 (ix+5) a 1: empieza el movimiento
+C 0x59aa y el paso dentro de el, a cero
+C 0x59ad (ix+0x11) cuenta los golpes dados
+C 0x59b4 (ix+0x0E): si esta puesto, el muneco va corriendo
+C 0x59be y ahora los bits de direccion se convierten en un numero
+C 0x59c8 uno de los lados suma 10
+C 0x59ce y el otro 5: de ahi salen 0, 5, 10 y 15
+C 0x59d0 (ix+3) es la direccion, que es lo que elige el fotograma
+B 0x5a08 ===== Seguir una trayectoria =====
+L 0x5a08 sigue_la_trayectoria  saca del guion el desplazamiento de este cuadro y mueve al muneco
+C 0x5a09 (ix+4) trae la direccion en bits
+C 0x5a0c y esta cuenta la convierte en indice de la tabla de cuatro
+C 0x5a17 (ix+7) es el paso dentro de la secuencia
+C 0x5a1e el 0xA0 cierra la secuencia
+C 0x5a25 al acabarse, se pasa a la direccion siguiente y se vuelve a probar
+C 0x5a2a y el 0xAA la deja en espera
+C 0x5a2e dos bytes por paso: uno de cada eje
+C 0x5a34 el desplazamiento es RELATIVO a donde estaba al empezar, que es (ix+8)
+C 0x5a45 (ix+5) a 2: la secuencia queda plantada donde esta
+B 0x5a49 ===== La maquina persigue la pelota =====
+L 0x5a49 persigue_la_pelota  mueve al muneco hacia la altura de la pelota, a la velocidad que toque
+C 0x5a49 pasada la fase 3 ya no se persigue nada
+C 0x5a52 el bit 1 dice de que lado se juega
+C 0x5a59 y por ese lado se le suma el margen que trae C
+C 0x5a5c (0xE102) es la altura de la pelota
+C 0x5a61 la diferencia con la del muneco
+C 0x5a64 C queda en 1 si hay que bajar
+C 0x5a68 y en 2 si hay que subir
+C 0x5a6b una diferencia menor que dos no merece moverse
+C 0x5a73 y si no hay diferencia, quieto
+C 0x5a7f LA VELOCIDAD: se rota un patron de bits y solo se mueve cuando sale un uno
+C 0x5a81 este cuadro le tocaba estarse quieto
+C 0x5a85 y por abajo no pasa de 0xA2
+C 0x5a89 dos pixeles por paso
+C 0x5a8f (ix+0x0D) es hacia donde mira
+C 0x5a98 la otra direccion, con el mismo patron de velocidad
+C 0x5a9e y por arriba el tope es 0x5B
+C 0x5aad la altura del muneco
+C 0x5ab3 catorce por delante
+C 0x5ab6 y veinte mas alla: la horquilla en la que llega a la pelota
+C 0x5ac4 (ix+0x11) son los golpes ya dados
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+B 0x620f ===== LAS DOCE SUBFASES DEL PUNTO =====
+L 0x620f reparte_la_subfase  despacha (0xE130) sobre la tabla de doce que va pegada detras
+C 0x6212 (0xE10C) dice a quien le toca
+C 0x621c y se borra el aviso de golpe del que va a jugar
+C 0x621d C es la subfase y B el paso dentro de ella
+C 0x6222 y la tabla de doce viene pegada aqui detras
+B 0x623d ===== Subfase 0: colocar la pelota para el saque =====
+C 0x6240 la terna de saque de un lado
+C 0x6243 (0xE140) dice cual
+C 0x6249 y la del otro
+C 0x624f seis bytes: las tres coordenadas de la pelota, en palabras
+C 0x6254 los dos munecos, a media altura
+C 0x6261 0xFF o 0x00 segun el lado
+C 0x626b (0xE10C): de quien es el turno
+C 0x626f borra los avisos de golpe de los dos
+C 0x6275 y todo el estado del punto: fase, botes, red, faltas
+C 0x6291 (0xE142) a 1
+C 0x6296 (0xE115) a 0x10: la cuenta de la que arranca el saque
+B 0x62ab ===== Subfase 1: el saque =====
+C 0x62b0 (0xE104) es la altura de la pelota en la mano
+C 0x62b3 el mando del jugador 1
+C 0x62b8 salvo que saque el otro lado
+C 0x62c6 con un solo jugador, saca la maquina
+C 0x62ce (0xE141) anota quien saca
+C 0x62cf (0xE102) es donde se coloca la pelota antes de lanzarla
+C 0x62d3 por debajo de 0x5E no se puede bajar mas
+C 0x62d8 el bit 2 del mando
+C 0x62de y por arriba el tope es 0xA1
+C 0x62e8 el bit 0 es el boton: soltar la pelota
+C 0x62f1 borra los cinco bytes de velocidad de la pelota
+C 0x62f8 y le pone 2 de subida: el lanzamiento
+C 0x62fe (0xE10E), el aviso de golpe, a cero
+C 0x6304 y a la subfase siguiente
+C 0x6306 subfase 2
+C 0x630e por debajo de 0x33 de altura ya no hay saque que valga
+C 0x6320 los bits 2 y 3: hay que mover la raqueta para golpear
+C 0x6323 y si se mueve, a la fase 3
+C 0x6328 subfase 3
+C 0x632e (0xE11A) y (0xE11B) son un contador de 16 bits que se va desplazando
+B 0x633c ===== LA RED: una caja de tres lados =====
+L 0x633c mira_si_da_en_la_red  la pelota da en la red si esta dentro de la caja de la red
+C 0x633c (0xE100) es la coordenada larga de la mesa
+C 0x6340 la red va de 0x5F a 0x68: fuera de ahi, no hay red que tocar
+C 0x634a la segunda coordenada, entre 0x57 y 0xA8: el ancho de la mesa
+C 0x6355 y la altura: por encima de 0x36 pasa limpia
+C 0x635a entre 0x35 y 0x36 roza la cinta y sigue
+C 0x635e (0xE147) es el aviso de que ya se ha cantado
+C 0x6365 y si no, se canta: es el LET
+C 0x6368 0x7002 de velocidad: el rebote seco de la red
+C 0x636e (0xE150) a 0x2A
+C 0x6377 y la pelota cae a un lado o al otro de la red segun de quien fuera el golpe
+B 0x6392 ===== LA PELOTA: un cuadro de vuelo =====
+L 0x6392 mueve_la_pelota  suma las tres velocidades, mira la mesa y aplica la gravedad
+C 0x6395 (0xE10C) dice hacia que lado va, o sea si la coordenada sube o baja
+C 0x639e hacia atras
+C 0x63a3 o hacia adelante
+C 0x63a6 (0xE10D) hace lo mismo con el otro eje
+C 0x63bd LA MESA a lo largo: de 0x2D a 0x98
+C 0x63c8 y a lo ancho: de 0x5E a 0xA0
+C 0x63d1 (0xE116) a 0x30: dentro de la mesa, la pelota lleva sombra
+C 0x63d6 la altura
+C 0x63d9 por encima de 0x30 aun vuela
+C 0x63dd entre 0x26 y 0x30 esta botando
+C 0x63e2 y por debajo, ya ha tocado: fin del punto
+B 0x63e7 ===== La sombra =====
+L 0x63e7 pon_la_sombra  decide si la pelota proyecta sombra y de que clase
+C 0x63e7 sin sombra por omision
+C 0x63ee la horquilla a lo ancho, un poco mas holgada que la de la mesa
+C 0x63f9 y a lo largo, de 0x2D a 0xCA
+C 0x6401 0xAA: el patron de la sombra
+C 0x6403 pasado 0x99 ya es la mitad de fuera
+C 0x640a y ahi la sombra solo sale con la pelota baja
+C 0x6417 (0xE117) y (0xE116) los lee luego el dibujado
+B 0x6422 ===== La gravedad =====
+C 0x6422 (0xE10E) a cero: la pelota aun sube
+C 0x642e mientras sube, la coordenada larga avanza al reves
+C 0x6434 (0xE115) es la gravedad
+C 0x6437 y se RESTA de la velocidad de subida, que va en 16 bits
+C 0x643c el prestamo, al byte alto
+C 0x6443 cuando la resta se pasa de cero, la velocidad queda a cero
+C 0x6448 y (0xE10E) a uno: a partir de aqui, cae
+C 0x6450 el rebote
+C 0x6457 por encima de 0xF0 de altura la pelota se ha ido: punto
+C 0x6467 cayendo, la MISMA gravedad se suma en vez de restarse
+C 0x646d y el acarreo sube al byte alto
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+B 0x646e ===== EL GOLPE: primero el jugador cercano =====
+C 0x646e (0xE10C): la pelota tiene que venir hacia el
+C 0x6474 (0xE147) es el aviso de la red
+C 0x647a y (0xE142) el de saque
+C 0x6483 en la fase 2 el golpe cuenta; en las demas no
+C 0x6487 (0xE148) marca que ya se ha golpeado en este vuelo
+C 0x648d (0xE164) trae el lado hacia el que mira
+C 0x6499 mira si la pelota le queda a mano
+C 0x649c y si no, no hay golpe
+C 0x649e las tres melodias de golpe entre las que se elige
+C 0x64a9 (0xE16C) a 5: el fotograma del golpe
+L 0x64af suena_el_golpe  elige el sonido del golpe segun hacia donde lo dirija
+C 0x64b2 el bit 2 lo cambia por el primero
+C 0x64b7 y el 5 por el segundo
+C 0x64bc (0xE14F): si esta puesto, suena el golpe especial
+C 0x64c7 y en la fase 1 el golpe no se oye
+B 0x64cd ===== Y el mismo golpe para el lejano =====
+C 0x64cd aqui la pelota tiene que ir hacia el otro lado
+C 0x64ef el `cpl` invierte el lado: el de enfrente mira al reves
+C 0x6503 con un jugador solo, la maquina decide el golpe
+C 0x6506 sus tres melodias son distintas de las del cercano
+C 0x6511 (0xE18C) a 6
+B 0x6517 ===== Los limites de la sala =====
+C 0x651a por debajo de 0x10 la pelota se ha ido del todo: punto
+C 0x6526 el fondo, en 0xE5
+C 0x6528 y rebota justo antes
+C 0x652a invirtiendo el sentido de (0xE10C)
+C 0x6532 y a lo ancho, las dos paredes
+C 0x6534 la de 0x41
+C 0x653d y la de 0xBC
+C 0x6540 deja la pelota justo en el borde
+C 0x6541 y le da la vuelta al sentido de ese eje: eso es el rebote
+C 0x654b borra la velocidad de subida, los 16 bits
+C 0x6558 y la deja cayendo
+C 0x655e melodia 3
+C 0x6561 0x90 de fuerza
+C 0x6566 pasada la fase 3, 0xF0: mas seco
+C 0x6576 y a partir de la 4 el punto se acaba de otra manera
+B 0x6583 ===== Las tres puertas para cambiar de subfase =====
+L 0x6583 pon_la_subfase  deja (0xE130) en A y reinicia el paso
+L 0x6588 espera_y_avanza_subfase  deja A cuadros en (0xE004) y avanza
+L 0x658b avanza_subfase  sube (0xE130) al escalon siguiente
+C 0x6590 (0xE131), el paso dentro de la subfase, vuelve a cero
+B 0x6594 ===== El efecto que se le da a la pelota =====
+L 0x6594 efecto_del_cercano  con la curva que toque segun hacia donde mire
+C 0x6594 tras un roce de red no hay efecto que valga
+C 0x659a la curva plana
+C 0x659f la curva que sube
+C 0x65a2 el bit 1 de (0xE164) es el lado hacia el que mira
+C 0x65a9 y la que baja
+C 0x65ac (0xE167) es el punto de la curva
+C 0x65af a la mitad: la curva se recorre de dos en dos
+L 0x65b9 efecto_del_lejano  lo mismo para el de enfrente
+C 0x65c7 con un solo jugador, el de enfrente no da efecto
+C 0x65e4 (0xE141) a 1
+C 0x65e7 (0xE14F) es el golpe especial
+C 0x65ee deja el nibble bajo y le pone el 0x40
+C 0x65f7 y si no, el bit 2 decide
+C 0x65ff (0xE110) marca la clase de golpe que ha salido
+C 0x660b (0xE114) es la fase del intercambio
+C 0x6612 (0xE142) a 1: hay saque pendiente
+C 0x661c (0xE145) cuenta los puntos jugados
+C 0x6622 0x2000 de velocidad: el bote en la mesa
+C 0x662a (0xE150) a 0x1E
+C 0x662d la pelota vuelve a un lado o a otro segun quien golpeara
+B 0x6645 ===== EL CANTE DEL ARBITRO =====
+C 0x6645 en la fase 1 sigue habiendo saque
+C 0x664f B es el cante que va a salir, y se arma mirando los avisos
+C 0x6651 (0xE148): si nadie golpeo, se queda en el primero
+C 0x6658 (0xE143): el bote
+C 0x665f (0xE142): el saque
+C 0x6666 y (0xE14C) devuelve uno atras
+C 0x666e la tabla de los cuatro rotulos: LET, NET, OUT e IN
+C 0x6679 el sitio donde se escriben
+C 0x667c (0xE141) dice de quien es
+C 0x6680 y con cambio de campo, del otro
+C 0x668b entonces el rotulo va al otro lado de la pantalla
+C 0x668e sin cabecera: el destino ya esta en HL
+C 0x6692 y el sonido del cante sale de la tabla hermana
+C 0x669a que solo suena dentro de la partida
+C 0x669f la pelota vuelve al principio
+C 0x66a7 en medio a lo ancho
+C 0x66ab y sin sombra
+C 0x66b0 los dos munecos, a 0x3A
+C 0x66b8 0x30 cuadros para leer el cante
+C 0x66be subfase 4
+C 0x66c2 melodia 0x68
+C 0x66c5 el guion de la columna lateral
+C 0x66c8 (0xE14B) elige cual de las dos
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x66d6 la espera para leer el rotulo
+C 0x66dc subfase 5
+C 0x66e3 si hubo golpe, el punto se resuelve por otro camino
+C 0x66ea (0xE132) y (0xE133): los dos tanteos del set
+C 0x66ed (0xE141) dice de quien fue el ultimo golpe
+C 0x66f3 (0xE142), si el fallo fue en el saque
+C 0x66f9 y (0xE14C), la otra clase de fallo
+C 0x6710 con un jugador solo no hay cambio de lado
+C 0x6714 (0xE053) es el set
+C 0x6718 en el primero, siempre
+C 0x671d y en el tercero solo cuando aun no se ha cambiado
+C 0x6729 en BCD, 0x10 son DIEZ puntos: ahi es donde se cambia de lado en el set decisivo
+C 0x6759 (0xE14B) anota de que lado cae el punto
+B 0x675e ===== El tanteo, en BCD =====
+C 0x675e el tanteo de quien gana el punto
+C 0x675f uno mas
+C 0x6761 y el `daa` lo deja en decimal codificado: los dos digitos se leen a ojo del byte
+C 0x6763 (0xE054) y (0xE057) son los tanteos de set de cada jugador
+C 0x6769 indexados por el set que se juega
+C 0x6778 y se cruzan si el punto fue del otro
+C 0x677c otra suma en BCD
+C 0x6784 seis mas alla estan los sets ganados
+C 0x678e y se le apunta uno
+C 0x6795 si los dos lo tienen, se borran los dos
+C 0x67b4 subfase 6
+C 0x67bb recoloca a los munecos
+C 0x67be y repinta las columnas laterales
+C 0x67cc (0xE052): la pantalla se vuelve a montar
+C 0x67d0 subfase 7
+C 0x67dd subfase 8
+C 0x67e7 0x60 cuadros de espera
+C 0x67f1 subfase 9
+C 0x67f3 borra el rotulo del cante de un lado
+C 0x67fe y del otro: tres tiles cada uno, con el patron 6
+B 0x680c ===== LAS REGLAS: 21 puntos, y ganar por dos =====
+C 0x6813 los dos tanteos del set
+C 0x6819 en BCD, 0x20 son VEINTE
+C 0x6822 (0xE14A) a 1: los dos a veinte, o sea DEUCE
+C 0x6829 y si los dos llegan a 21
+C 0x6833 se les devuelve a cero: en el deuce el marcador se reinicia
+C 0x683d y aqui, el cambio de saque
+C 0x6842 la suma de los dos tanteos
+C 0x6843 en decimal
+C 0x6844 mirando solo el digito de las unidades
+C 0x6846 cada cinco puntos jugados
+C 0x6848 o sea al 0 y al 5
+C 0x6850 el `cpl` da la vuelta a (0xE140): saca el otro
+C 0x6858 en el deuce, el que decide es el segundo tanteo
+C 0x6862 por debajo de veinte no hay nada que mirar
+C 0x686c la diferencia entre los dos tanteos
+C 0x6872 empatados, no gana nadie
+C 0x6878 y si el que gana es el otro, se le da la vuelta
+C 0x687c DOS de diferencia. Y tambien vale 8, porque la resta es BINARIA sobre BCD: 21 menos 19 da 0x08, y son dos puntos igual
+C 0x6891 0x21 en BCD: VEINTIUNO, el set ganado
+C 0x6895 y se le apunta el set
+C 0x6897 (0xE14D) dice quien lo gano
+C 0x689d (0xE053) pasa al set siguiente
+C 0x689f y el deuce se olvida
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x68a2 y a la subfase 11
+C 0x68af sin dos jugadores no hay cambio de campo
+C 0x68b3 (0xE134) es el pestillo, para no cambiar dos veces
+C 0x68bd solo en el tercer set
+C 0x68c1 y solo si el cambio esta pedido
+B 0x68d7 ===== El deuce =====
+C 0x68d7 melodia 0x2B
+C 0x68dc el rotulo DEUCE
+C 0x68e4 0x60 cuadros para leerlo
+C 0x68f4 melodia 0x42: el punto que se pierde
+C 0x68fa la clase de golpe y la altura, a cero
+C 0x6910 mira los cuatro bytes de velocidad de la pelota
+C 0x6919 si estan todos a cero, la pelota esta parada: subfase 8
+C 0x6921 subfase 10
+C 0x692a melodia 0xAE
+C 0x6930 subfase 11
+C 0x693e el bit 3 del reloj de cuadros: PARPADEA cuatro veces por segundo
+C 0x6942 con el bit puesto se pinta el rotulo
+C 0x694a (0xE14D) es quien gano el set
+C 0x6957 y con el bit apagado se borra: eso es lo que parpadea
+C 0x695a mientras el canal 1 siga sonando, no se pasa
+C 0x6971 y cuando se agota la espera
+C 0x6978 (0xE00D) a 1: la partida ha terminado
+C 0x697c la pantalla de nombres entera
+C 0x6988 0x30 cuadros
+L 0x6990 esconde_los_sprites  0xE0 en los 0x4C primeros bytes: todos fuera de la pantalla
+B 0x699c ===== El rotulo del ganador, parpadeando =====
+L 0x699c parpadea_el_ganador  alterna entre dos guiones con el bit 3 del reloj
+C 0x699f los guiones de un ganador
+C 0x69a5 o los del otro
+C 0x69ab y de cada par, uno pinta y el otro borra
+B 0x69ff ===== Y su sprite, igual =====
+L 0x69ff sprite_del_ganador_fijo  la misma tabla, pero sin parpadeo
+L 0x6a03 sprite_del_ganador  cuatro bytes de atributo, alternando con el reloj
+C 0x6a11 se cruzan si gano el otro
+C 0x6a19 y en el primer set no se cruzan
+C 0x6a28 aqui vuelve a mandar el bit 3 del reloj
+C 0x6a38 los cuatro bytes del sprite: y, x, patron y color
+L 0x6a53 pon_la_fuerza  saca de las dos tablas la fuerza y el alcance del golpe
+C 0x6a5b (0xE150) es el alcance
+C 0x6a60 seis mas alla esta el otro valor
+C 0x6a64 (0xE111)
+B 0x6a68 ===== La direccion del golpe sale del mando =====
+L 0x6a68 elige_el_golpe  de los bits del mando salen la subida y la velocidad de la pelota
+C 0x6a68 dos por omision
+C 0x6a6b cinco desplazamientos dejan el bit 5 en el acarreo
+C 0x6a72 cada direccion cambia el indice
+C 0x6a7d y si no hubo roce de red
+C 0x6a83 se le restan dos mas: seis casos en total
+C 0x6a89 la tabla es de pares
+C 0x6a8d (0xE112) y (0xE113): la velocidad con que sale la pelota
+C 0x6a98 y (0xE115) a 0x40, que es la gravedad de este golpe
+B 0x6ab4 ===== La aritmetica de la pelota, en 16 bits =====
+L 0x6ab4 resta_velocidad  resta el par de (HL) a la posicion de (DE), con el prestamo
+C 0x6ab7 el prestamo sube al byte alto
+C 0x6abf y ahora el otro byte del par
+L 0x6ac4 suma_velocidad  la misma cuenta sumando: la pelota avanza
+C 0x6ac7 el acarreo sube al byte alto
+B 0x6ad4 ===== Dibujar la pelota, su sombra y sus reflejos =====
+L 0x6ad4 dibuja_la_pelota  coloca los sprites de la pelota a partir de sus tres coordenadas
+C 0x6ad7 la coordenada larga
+C 0x6ada la de a lo ancho
+C 0x6add y la altura
+C 0x6ade que se convierten en fila y columna de la pantalla
+C 0x6ae5 la pelota se dibuja 16 pixeles mas arriba de su punto
+C 0x6ae8 (0xE117): sin sombra, el sprite se manda fuera
+C 0x6af1 y por los bordes tambien
+C 0x6afb la pelota vuelve a 0x0B
+C 0x6b01 0xD0 es la fila prohibida del VDP: se esconde el sprite
+C 0x6b17 (0xE116) trae el patron de la sombra
+C 0x6b1a y si no vale 0xAA, no hay sombra que pintar
+C 0x6b1e las dos coordenadas, fuera de la pantalla
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+B 0x6b32 ===== El tamano de la pelota =====
+L 0x6b32 elige_el_tamano  cuanto mas alta y mas al fondo, mas pequena se dibuja
+C 0x6b32 la altura
+C 0x6b37 cuatro escalones: 0x45, 0x2F, 0x26 y 0x18
+C 0x6b4d y pasado el medio campo, uno mas
+C 0x6b56 (0xE10F) guarda el tamano elegido
+C 0x6b59 los cinco patrones de un lado
+C 0x6b62 y los del otro
+C 0x6b70 mas alla de 0xA1 se cambian los dos sprites de sitio
+C 0x6b78 el patron del primero
+C 0x6b7d y cuatro bytes mas alla, el del segundo
+L 0x6b7f coloca_dos_sprites  pone fila y columna en un sprite y manda el otro fuera
+C 0x6b82 cual de los dos se usa depende del lado de la mesa
+C 0x6b8a y al que no toca, 0xE0: fuera de la pantalla
+B 0x6ba1 ===== LA PERSPECTIVA =====
+L 0x6b98 proyecta_sin_altura  la misma proyeccion dando la altura por sabida
+L 0x6ba1 proyecta  convierte las tres coordenadas de la mesa en fila y columna de pantalla
+C 0x6ba1 la coordenada larga y la ancha
+C 0x6ba5 y la altura
+C 0x6bac 0xD4: el factor de la profundidad
+C 0x6bb2 0x77 es el desplazamiento del horizonte
+C 0x6bbb la coordenada a lo ancho
+C 0x6bbe medida desde el centro de la mesa
+C 0x6bc4 con el signo aparte
+C 0x6bcb (0xE121) guarda de que lado cae
+C 0x6bce 0xBF: el factor de la anchura, que se estrecha con la distancia
+C 0x6bd5 y el producto de los dos
+C 0x6bdc 0x80 es el centro de la pantalla
+C 0x6be0 al que se le suma o se le resta lo que se haya abierto
+C 0x6bea 0x8E: el factor de la fila
+C 0x6bf4 y 0xD4 otra vez, ahora sobre la altura
+C 0x6bfb las dos aportaciones se suman: la profundidad sube la pelota y la altura tambien
+L 0x6f09 saca_el_efecto  toma de la curva el valor que toque y lo deja en (0xE151)
+L 0x6f35 efecto_por_el_centro  el efecto sale de lo lejos del centro que pase la pelota
+C 0x6f37 la coordenada a lo ancho
+C 0x6f3a medida desde el centro de la mesa
+C 0x6f3e con el signo aparte, que cambia el tramo de la tabla
+C 0x6f42 tres escalones: 0x20, 0x10 y 0x08
+C 0x6f51 y de ahi sale el efecto
+B 0x6f65 ===== Multiplicar y dividir, que el Z80 no sabe =====
+L 0x6f65 multiplica_8x8  HL = H por E, sumando y desplazando ocho veces
+C 0x6f68 ocho bits, un paso por bit
+C 0x6f6a desplaza el resultado
+C 0x6f6d y suma el multiplicando cuando el bit sale a uno
+L 0x6f71 multiplica_16x8  la anterior aplicada a las dos mitades, y sumadas con acarreo
+C 0x6f75 la parte baja
+C 0x6f7c y la alta
+C 0x6f81 se juntan por el byte que comparten
+L 0x6f88 divide  divide DE entre BC dejando el cociente en E, por restas y desplazamientos
+C 0x6f8c dieciseis pasos, uno por bit
+C 0x6f8f el dividendo entra por arriba
+C 0x6f95 se intenta restar el divisor
+C 0x6f97 si no cabe, se deshace la resta
+C 0x6f99 y si cabe, un uno en el cociente
+B 0x6fa2 ===== El rozamiento =====
+L 0x6fa2 frena_la_pelota  aplica (0xE111) a las tres velocidades, restando o sumando
+C 0x6fa5 (0xE111) es cuanto frena
+C 0x6fa7 a cero, la pelota no pierde nada
+C 0x6fa9 a la cuarta parte, y se guarda para el cuadro siguiente
+C 0x6fac (0xE110) es la clase de golpe, y decide si frena o EMPUJA
+C 0x6fb4 las tres velocidades, una a una
+C 0x6fd6 y con el otro golpe, las mismas tres al reves
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+B 0x43a7 ===== La escena que se apilo como retorno =====
+L 0x43a7 elige_los_jugadores  en el titulo, uno o dos jugadores y a jugar
+C 0x43b2 y de ahi, solo lo que se acaba de pulsar
+C 0x43b5 sin los dos botones
+C 0x43bb (0xE000): en que escena estamos
+C 0x43bf los bits 4 y 5, los botones
+C 0x43c3 la tabla de los dos modos
+C 0x43c6 (0xE042) es lo elegido: 0 uno, 1 dos
+C 0x43cd y su bit 5 es el que mira todo el juego
+C 0x43d3 escena 3, subescena 0: empieza
+C 0x43e7 los bits 0 y 1 cambian de opcion
+C 0x43eb y el XOR alterna entre uno y dos jugadores
+L 0x43f1 borra_el_estado  0xAB bytes desde 0xE045 a cero
+L 0x43ff esconde_todos_los_sprites  los 32 sprites, fuera
+L 0x4404 esconde_casi_todos  los 19 primeros
+C 0x440a 0xE0 en la coordenada Y es la fila prohibida del VDP
+L 0x4412 escribe_un_digito  saca de la tabla el patron de (DE) y lo escribe en HL
+B 0x441d ===== EL MARCADOR =====
+L 0x441d pinta_el_marcador  los nombres, los sets y los dos tanteos
+C 0x441d los guiones del saque
+C 0x4423 uno o dos jugadores cambia la pareja
+C 0x442a y el cambio de campo, el lado
+C 0x4440 (0xE050) es un set ganado
+C 0x4449 y (0xE051) el otro
+C 0x444f el tanteo del jugador 1
+C 0x445b y el del 2
+B 0x445e ===== Dos digitos BCD, sin ceros a la izquierda =====
+L 0x445e escribe_el_tanteo  los dos digitos de un byte BCD, ocultando el cero de las decenas
+C 0x445e dos digitos
+C 0x4460 C es la mascara: a cero borra el digito
+C 0x4463 los cuatro desplazamientos bajan el nibble alto
+C 0x4469 con decenas a cero, la mascara sigue borrando
+C 0x446d salvo en el ultimo digito, que siempre se ve
+C 0x4473 0x10 es el patron del '0'
+C 0x4475 y la mascara lo convierte en el patron 0, que es el espacio
+C 0x447b ahora las unidades
+C 0x4487 y el byte de abajo: se recorre al reves
+L 0x448c borra_el_marcador  cuatro rectangulos de cinco tiles, con el patron 6
+C 0x44ad cinco tiles por fila
+C 0x44b2 y 0x20 mas alla esta la fila siguiente
+L 0x44cb escribe_los_sets  el tanteo de cada set jugado, uno debajo de otro
+C 0x44cb (0xE053) dice cuantos sets van
+C 0x44d6 y cada uno esta un byte y un tile mas alla
+L 0x44db pinta_los_resultados  la pantalla de sets: los rotulos y las bolas de cada uno
+C 0x44db tres filas
+C 0x44e6 el marco
+C 0x44ec y los nombres de los dos
+C 0x44ef (0xE05A): los sets ganados
+L 0x44fb marca_los_sets  una bola por set ganado, y nada por el que no
+C 0x44ff 0xEE es el patron de la bola
+C 0x4503 y si no se gano, se borra
+C 0x4509 tres tiles de separacion entre marca y marca
+L 0x450e pinta_los_nombres  YOU y MSX, o 1UP y 2UP segun el modo
+C 0x4514 el bit 5 de (0xE002) es lo que los separa
+C 0x4547 con BC a 0x3B3C
+C 0x454c y aqui a cero
+L 0x4a0d prepara_el_rotulo_del_titulo  catorce pasos, empezando por la fila de abajo
+C 0x4a0d (0xE00A) son los pasos que le quedan
+C 0x4a12 y (0xE00E) la fila por la que va, aqui la de mas abajo
+L 0x4a1b carga_los_patrones_del_titulo  el bloque comprimido y su color
+C 0x4a2a 0xF0: blanco sobre transparente, 0xD8 bytes en los tres tercios
+B 0x4a2f ===== El rotulo del titulo, subiendo =====
+L 0x4a2f sube_el_rotulo  dibuja una fila mas del rotulo, una por paso
+C 0x4a32 0xFFE0 es menos 0x20: una fila MAS ARRIBA que la anterior
+C 0x4a39 los patrones arrancan en 0x40
+C 0x4a3d tres tiles
+C 0x4a40 luego once, empezando en 0x0C
+C 0x4a47 y once mas
+C 0x4a4b lo que queda de fila, a cero
+C 0x4a51 y un paso menos
+L 0x4a53 escribe_tiles_seguidos  B patrones consecutivos desde A, y devuelve la fila de abajo
+C 0x4a58 el patron siguiente
+C 0x4a5c 0x20: la fila de debajo
+C 0x4afb los patrones del fondo, en dos tercios
+C 0x4b07 su color
+C 0x4b13 y otra vez, desplazado: dos bandas
+C 0x4b21 0x200 bytes reflejados, la otra mitad del dibujo
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+B 0x4b93 ===== El rotulo que va saliendo letra a letra =====
+L 0x4b93 saca_una_letra_mas  escribe una columna mas del rotulo, en sus dos filas
+C 0x4b96 (0xE045) es por que letra va
+C 0x4b9b veintitres columnas: al pasarse, se acabo
+C 0x4ba0 la primera fila del mapa
+C 0x4ba8 y su sitio en la pantalla
+C 0x4bb2 la segunda mitad esta 23 bytes mas alla, que es lo que mide la fila
+C 0x4bb7 y va en la fila de abajo
+C 0x4bc0 devuelve uno cuando ya no queda letra que sacar
+B 0x4bf1 ===== La pelota que bota en el menu =====
+L 0x4bf1 bota_la_pelota_del_menu  la baja un pixel y le cambia la altura con la rampa
+C 0x4bf6 el patron, fijo
+C 0x4bf9 al llegar a 0x8A se para
+C 0x4bfd y si no, un pixel mas
+C 0x4bff (0xE046) es el paso de la rampa
+C 0x4c02 la rampa de ida y vuelta
+C 0x4c0f ocho pasos y vuelta a empezar
+C 0x4c17 al pararse, se queda en 0x14
+B 0x4c23 ===== La demostracion: mover a un muneco por guion =====
+L 0x4c23 mueve_por_guion  saca de la secuencia el desplazamiento de este paso
+C 0x4c23 B es la mascara del reloj: cada cuantos cuadros se mueve
+C 0x4c2c (0xE075) cuenta los cuadros saltados
+C 0x4c2d (0xE1B0) es la secuencia
+C 0x4c3a y (0xE1B2) el paso dentro de ella
+C 0x4c3e que se adelanta solo
+C 0x4c43 el 0xA0 cierra la secuencia
+C 0x4c4a el desplazamiento se suma a la posicion
+C 0x4c4c y devuelve uno mientras quede secuencia
+C 0x4c50 al acabarse, el paso vuelve a cero
+L 0x5b2c mueve_al_lejano  lo mismo que con el cercano, sobre el otro bloque de estado
+C 0x5b38 (0xE185) distinto de cero: esta en mitad de un golpe
+C 0x5b42 0xF9 es su patron de velocidad: se mueve en seis de cada ocho cuadros
+C 0x5b4c y persigue la pelota con ese paso
+C 0x5b55 con dos jugadores manda la persona, no la maquina
+L 0x5b6e sin_mando  devuelve cero: cuando juega la maquina no hay mando que leer
+C 0x5b70 (0xE10D): hacia donde va la pelota
+C 0x5b7d y de ahi sale hacia que lado se vuelve el muneco
+B 0x5b87 ===== CUANDO GOLPEA LA MAQUINA =====
+L 0x5b87 decide_el_golpe  la maquina golpea si la pelota le llega a la altura justa
+C 0x5b87 tras un roce de red, no
+C 0x5b8d ni si le toca al otro lado
+C 0x5b92 ni fuera de la fase 0
+C 0x5b97 (0xE10E): tiene que estar CAYENDO
+C 0x5b9c la altura de la pelota
+C 0x5b9f y la ventana es estrecha: solo entre 0x3D y 0x3F
+C 0x5ba6 aqui decide de que lado la manda
+C 0x5baa el bit 2 del mando fingido
+C 0x5bae o el 3
+C 0x5bb0 y eso es lo que el resto del juego lee como si fuera un mando
+C 0x5bb2 (0xE047) es el nivel
+C 0x5bb5 del 2 para arriba, la maquina juega de otra manera
+C 0x5bb9 las tablas que gobiernan su juego, por nivel
+C 0x5bcb (0xE145) son los puntos jugados: pasado el umbral, aprieta
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+L 0x5c6d finge_el_mando  el mando que la maquina se inventa para moverse en el menu
+C 0x5c6d (0xE1AA) es la pausa entre movimientos
+C 0x5c77 mientras dure, quieta
+C 0x5c87 el bit 4 del reloj decide hacia que lado
+C 0x5c92 y cada dieciseis cuadros
+C 0x5c95 se para 0x40 cuadros
+B 0x5c9e ===== LAS SEIS ZONAS: adonde manda la maquina la pelota =====
+L 0x5c9e elige_la_trayectoria  segun por que zona le llega la pelota, saca adonde la devuelve
+C 0x5ca0 por donde le llega, a lo ancho
+C 0x5ca3 cinco cortes -0x40, 0x72, 0x80, 0x8C y 0x98- que dan SEIS zonas
+C 0x5cbc y el nivel
+C 0x5cc0 multiplicado por doce: seis entradas de palabra por nivel
+C 0x5cc4 la tabla de treinta
+C 0x5ccb mas la zona doblada
+B 0x6c53 ===== El bote en la mesa =====
+C 0x6c53 la altura del bote
+C 0x6c59 y una fase mas del intercambio
+C 0x6c5b en la 2 se anota que hubo bote
+C 0x6c6b la velocidad de subida pierde B: la pelota bota cada vez mas bajo
+C 0x6c71 el prestamo, al byte alto
+C 0x6c76 y al agotarse, se queda a cero
+C 0x6c81 la linea de la red: 0x69 por un lado
+C 0x6c89 y 0x5F por el otro
+C 0x6c8e (0xE146) anota en que campo boto
+C 0x6c9d y comparado con el campo de quien golpeo
+C 0x6ca3 (0xE141): de quien fue
+C 0x6cac (0xE14C) queda a uno si el bote cayo donde no debia: la falta
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x4010 lee un byte de la propia ROM
+C 0x4013 y lo escribe en otra direccion de la propia ROM, que no admite escritura: no llega a ninguna parte
+C 0x4016 y sigue con los patrones del rotulo
+C 0x401c a partir de aqui, la interrupcion cerrada
+C 0x4025 con el cerrojo echado se salta el cuadro entero
+C 0x4029 mira si toca cambiar de campo
+C 0x402f cero es que no hay nada pendiente
+C 0x4036 (0xE04B) otra vez
+C 0x4039 y otra vez a cero es que no hay nada
+C 0x4040 cero en A
+C 0x4049 la lectura del estado se hace con la interrupcion cerrada
+C 0x404d y se vuelve a abrir
+C 0x404e fin del cuadro
+C 0x404f HL a cero
+C 0x4058 A mas el byte bajo
+C 0x4059 que vuelve a HL
+C 0x405c y ya esta
+C 0x405d la misma cuenta sobre E
+C 0x405e el byte bajo de DE
+C 0x405f sin acarreo no hay mas
+C 0x4060 y con el, sube D
+C 0x4061 hecho
+C 0x4068 el byte alto de la entrada
+C 0x4069 que completa DE
+C 0x406a y a HL, que es desde donde se salta
+C 0x406c lo primero, cerrar la interrupcion
+C 0x406d modo 1, el unico que usa la BIOS del MSX
+C 0x4071 en 0xFD9A, el primer byte del gancho
+C 0x4077 y la direccion en los dos siguientes
+C 0x407d desde la primera variable
+C 0x4080 a la siguiente, que es el truco de propagar un byte con `ldir`
+C 0x4083 0x3FF bytes
+C 0x4088 y se propaga el cero por todas
+C 0x408a uno
+C 0x4092 y a cero otra vez
+C 0x4099 abre la interrupcion, que es lo que pone el juego en marcha
+C 0x409c la melodia que le llegue en A
+C 0x40a4 (0xE044) es el nivel que se eligio en el menu
+C 0x40a7 en la partida vale el elegido
+C 0x40a9 y en la presentacion, el 3 fijo
+C 0x40ae (0xE003), el reloj
+C 0x40b9 y de la 3 en adelante no se apila retorno
+C 0x40c0 apilada queda
+C 0x40c1 C es la escena y B la subescena
+C 0x40c5 el despachador va por la escena
+C 0x40e0 dibuja una fila mas del logotipo de la casa
+C 0x40e3 mientras queden filas, no se pasa de subescena
+C 0x40e7 y ya con el logotipo entero, el marco
+C 0x40ea cero, que es la escena a la que se va
+C 0x40f3 un cuadro menos de espera
+C 0x40f5 la subescena 1
+C 0x40f7 y a montar la pantalla del titulo
+C 0x4106 el mismo remate que la de abajo
+C 0x4109 B trae el escalon en que se entro
+C 0x410a a cero, no hay rotulo que refrescar
+C 0x410b y se salta el refresco
+C 0x4113 recupera el escalon
+C 0x4116 la cuenta atras
+C 0x411a al llegar a cero, adelante
+C 0x411c y mientras, la pelota sigue botando
+C 0x4121 la pelota del menu
+C 0x4127 el bit 0 del reloj
+C 0x4129 asi que esto solo corre uno de cada dos cuadros
+C 0x412d si el rotulo aun no ha salido entero, se espera
+C 0x4130 melodia 0x0F
+C 0x4133 la secuencia vuelve a la primera
+C 0x4137 y el paso, al segundo
+C 0x4139 (0xE1B1) es el paso dentro de la secuencia
+C 0x413c 0xEE
+C 0x413e (0xE074) es la altura de la pelota de la demostracion
+C 0x4141 0x30 cuadros de espera
+C 0x4143 y al remate comun
+C 0x4147 la cuenta atras
+C 0x414a un cuadro menos
+C 0x414b y hasta cero no se sigue
+C 0x414e deja la espera y pasa de subescena
+C 0x4153 mueve a los munecos de la demostracion
+C 0x4156 la cuenta atras
+C 0x4159 uno menos
+C 0x415a y no se sigue hasta agotarla
+C 0x415b al remate de la escena
+C 0x415f los munecos
+C 0x4165 y si el movimiento no ha acabado, se espera
+C 0x4166 el rotulo pequeno de KONAMI, letra a letra
+C 0x416c a la secuencia siguiente
+C 0x416d y a rematar
+C 0x4171 los munecos
+C 0x4174 B es la mascara del reloj: aqui, uno de cada dos cuadros
+C 0x4176 el guion de movimiento
+C 0x4179 hasta que se acaba, no se sigue
+C 0x417c melodia 0x84
+C 0x417f (0xE1B1), la cuenta de letras
+C 0x4182 que hay que conservar
+C 0x4184 y con ella se escriben las letras que ya han salido
+C 0x4187 recupera el puntero
+C 0x4188 la cuenta
+C 0x418a y la deja subida
+C 0x418d hasta las nueve no se sigue
+C 0x418e la secuencia
+C 0x4191 una mas
+C 0x4192 y a rematar
+C 0x4194 entrada con la cuenta fija en ocho: el rotulo entero
+C 0x4196 la cuenta va en C y B se pone a cero
+C 0x419b el mapa del rotulo pequeno
+C 0x419e y se copia tal cual a la VRAM
+C 0x41a3 los munecos de la demostracion
+C 0x41ab si ya vale 0x18, este golpe ya se dio
+C 0x41ad la posicion de la pelota
+C 0x41b2 por debajo de 0x15 aun no llega
+C 0x41b4 y el tope de arriba
+C 0x41b6 pasado, tampoco se golpea
+C 0x41b8 0x18: la marca de golpe dado
+C 0x41ba en (0xE07A), para no repetirlo
+C 0x41bd seis
+C 0x41bf (0xE073), el efecto del golpe de la demostracion
+C 0x41c2 melodia 0x11
+C 0x41c7 la mascara del reloj: uno de cada dos cuadros
+C 0x41cc y hasta que el movimiento acabe, no se sigue
+C 0x41cd melodia 3
+C 0x41d5 a la secuencia siguiente
+C 0x41d6 y al remate
+C 0x41da los munecos
+C 0x41dd mascara cero: se mueve todos los cuadros
+C 0x41df el guion de movimiento
+C 0x41e2 hasta acabarlo, nada
+C 0x41e3 melodia 5
+C 0x41e8 recoloca a los munecos para el golpe siguiente
+C 0x41eb la secuencia
+C 0x41ee una mas
+C 0x41ef y a la subescena siguiente
+C 0x41f3 uno de cada dos cuadros
+C 0x41f5 el guion
+C 0x41f8 hasta acabarlo, nada
+C 0x41f9 melodia 6
+C 0x41fe la otra colocacion
+C 0x4201 y adelante
+C 0x4205 el reloj
+C 0x420a uno de cada dos cuadros
+C 0x420e la cuenta sube
+C 0x420f y se mira
+C 0x4212 hasta 0xFD no se acaba: la espera mas larga de la demostracion
+C 0x4213 y entonces, adelante
+C 0x4217 borra la tabla de nombres
+C 0x421a y a la escena siguiente
+C 0x4222 melodia 0x34
+C 0x4225 la fuente, el fondo y su espejo
+C 0x4228 y encima el bloque de nombres del titulo
+C 0x422b coloca a los munecos
+C 0x422e cero
+C 0x4232 (0xE046), el paso de la rampa de la pelota
+C 0x4237 0x40 cuadros y adelante
+C 0x423c mientras la pantalla se monta, se cuenta
+C 0x4242 hasta que llegue a cero
+C 0x4243 no se sigue
+C 0x4244 cero
+C 0x4248 0x20 cuadros
+C 0x424d y a la escena siguiente, empezando por su primera subescena
+C 0x4250 borra la tabla de nombres
+C 0x4253 (0xE002), el modo
+C 0x4258 y monta la pista entera
+C 0x425b 0x20 cuadros, la espera de siempre
+C 0x425d en (0xE004)
+C 0x4260 (0xE001) es el escalon de la cadena de `djnz`
+C 0x4263 uno mas
+C 0x4264 y al cuadro siguiente entrara por el escalon de al lado
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x4267 la cuenta atras
+C 0x426a un cuadro menos
+C 0x426b y al agotarse, adelante
+C 0x426f con el bit puesto se repinta, y con el apagado se borra: eso es el parpadeo
+C 0x4272 la fila del rotulo que toca
+C 0x4275 dieciseis tiles
+C 0x4278 a cero, que es borrar
+C 0x427e la tabla de nombres
+C 0x4281 los sprites de la pelota
+C 0x4284 y el estado de juego, a cero
+C 0x4287 y adelante
+C 0x428b la tabla de nombres
+C 0x428e la pista entera
+C 0x4291 y al remate de arriba
+C 0x4295 coloca a los dos jugadores
+C 0x429b el marcador
+C 0x429e los sprites a la pantalla
+C 0x42a1 y el menu de nivel
+C 0x42a4 y a rematar
+C 0x42a8 mueve el cursor del nivel
+C 0x42ae el del joystick, guardado
+C 0x42b2 y sumado al del teclado
+C 0x42b3 (0xE040) guarda lo de antes
+C 0x42b9 si no hay nada nuevo
+C 0x42bb el mando nuevo, a B
+C 0x42c5 sin el bit 3, se prueba el otro
+C 0x42c7 arriba: un nivel mas
+C 0x42c8 y a rematar
+C 0x42cc y sin el bit 2 tampoco, no hay cambio
+C 0x42ce abajo: un nivel menos
+C 0x42cf uno
+C 0x42d4 el nivel que ha quedado
+C 0x42d7 si no es el 5, no da la vuelta
+C 0x42d9 y si lo es, al primero
+C 0x42db hecho
+C 0x42de y si no es 0xFF, tampoco
+C 0x42df por debajo del primero, al ultimo
+C 0x42e1 hecho
+C 0x42e2 borra el cursor del nivel
+C 0x42e7 el aviso corto de arranque
+C 0x42ea y a la escena siguiente
+C 0x42ec pone el fondo negro y monta el bloque de nombres
+C 0x42ef coloca a los munecos
+C 0x42f2 los sprites a la pantalla
+C 0x42f7 y 0x60 cuadros de espera
+C 0x42fc la cuenta atras
+C 0x42ff uno menos
+C 0x4300 hasta agotarla, nada
+C 0x4301 borra el cursor
+C 0x4304 y escribe el ordinal del set: 1ST, 2ND o 3RD
+C 0x4309 0xA0 cuadros para leerlo
+C 0x430e la cuenta atras
+C 0x4311 uno menos
+C 0x4312 y hasta cero, nada
+C 0x4313 borra el cursor
+C 0x4316 0x20 cuadros
+C 0x4318 en (0xE004)
+C 0x431b (0xE000), la escena
+C 0x431e una mas
+C 0x4320 y la subescena vuelve al primer escalon
+C 0x4323 hecho
+C 0x4327 el bloque de nombres de la pista
+C 0x432a y el marcador encima
+C 0x432d el modo
+C 0x4332 con un jugador no hay cambio de campo
+C 0x4337 (0xE053), el set
+C 0x4338 uno
+C 0x433a y en el primero tampoco
+C 0x4341 0x50 cuadros y adelante
+C 0x4344 un cuadro de juego
+C 0x4350 (0xE002), el modo
+C 0x4353 tal como esta
+C 0x4356 y devuelto sin el bit 6: se sale de la partida
+C 0x4357 y a la escena siguiente
+C 0x435a cero
+C 0x435b (0xE00D), el aviso de partida terminada
+C 0x435e (0xE050) y (0xE051): los sets ganados por cada uno
+C 0x4361 los dos
+C 0x4363 los sets de este
+C 0x4364 dos sets ganan la partida
+C 0x4366 y entonces se pasa a la subescena del final
+C 0x4369 el otro jugador
+C 0x436a y se mira igual
+C 0x436c borra el cursor
+C 0x436f la escena 4
+C 0x4371 y se entra por ella
+C 0x4374 subescena 1
+C 0x4376 la cuenta atras
+C 0x4379 uno menos
+C 0x437a hasta agotarla, nada
+C 0x437b el rotulo del ganador
+C 0x437e y adelante
+C 0x4381 subescena 2
+C 0x4383 (0xE012) es el estado del primer canal de sonido
+C 0x4386 mientras siga sonando
+C 0x4387 no se pasa: la escena espera a la musica
+C 0x4388 y cuando calla, adelante
+C 0x438b subescena 3
+C 0x438d la tabla de nombres
+C 0x4390 los sets ganados
+C 0x4393 cero
+C 0x4394 el del primero
+C 0x4396 y el del segundo: la partida vuelve a empezar de cero
+C 0x4397 y a la presentacion
+C 0x439a melodia 0xB1
+C 0x439c la de fin de partida
+C 0x439f el rotulo GAME SET
+C 0x43a2 0x80 cuadros, la espera mas larga del juego
+C 0x43a7 el joystick del jugador 1
+C 0x43aa guardado
+C 0x43ab y su teclado
+C 0x43ae los dos suman
+C 0x43af (0xE040), lo de antes
+C 0x43b7 sin nada nuevo, no hay nada que hacer
+C 0x43b8 (0xE000), la escena
+C 0x43bc y si no es la primera, se elige en vez de empezar
+C 0x43be el mando nuevo
+C 0x43c1 sin boton, se cambia de opcion
+C 0x43c9 el indice sobre la tabla de dos
+C 0x43cc el modo que sale
+C 0x43d0 la escena
+C 0x43d5 y la subescena
+C 0x43d6 a cero: empieza la partida
+C 0x43d8 hecho
+C 0x43d9 escena 1
+C 0x43db y su subescena
+C 0x43dc a cero
+C 0x43de hecho
+C 0x43df el mando, que hace falta luego
+C 0x43e0 borra lo que hubiera
+C 0x43e3 y se recupera en A
+C 0x43e4 (0xE042), la opcion elegida
+C 0x43e9 sin las flechas, no se cambia
+C 0x43ea la opcion
+C 0x43ed y devuelta cambiada: de uno a dos jugadores y al reves
+C 0x43ee hecho
+C 0x43f1 desde (0xE045)
+C 0x43f4 0xAB bytes de estado
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x43f7 el destino, el mismo sitio
+C 0x43f8 copiado a DE
+C 0x43f9 pero un byte mas alla
+C 0x43fa un cero en el primero
+C 0x43fc y el `ldir` lo propaga por todos: el truco de rellenar con la copia
+C 0x43fe hecho
+C 0x43ff 0x80 bytes: los 32 sprites
+C 0x4402 y al remate comun
+C 0x4404 0x4C bytes: solo los diecinueve primeros
+C 0x4407 la tabla de atributos de sprite
+C 0x4412 el indice
+C 0x4413 la tabla de los tres patrones
+C 0x4416 mas el indice
+C 0x4419 y el patron que sale
+C 0x4420 el modo
+C 0x4425 con un jugador, la pareja de arriba
+C 0x4427 y con dos, la de abajo
+C 0x442d cero es que no hay cambio de campo
+C 0x442e indice cero
+C 0x4430 y si no hay cambio, ese
+C 0x4432 y con cambio, el uno: los nombres van al otro lado
+C 0x4433 doblado, que la tabla es de palabras
+C 0x4434 sumado a la base
+C 0x4437 la entrada
+C 0x4438 su byte alto
+C 0x4439 que completa el puntero
+C 0x443a y se pinta el guion
+C 0x443d el sitio del set del primero
+C 0x4443 y se escribe
+C 0x4446 el del segundo
+C 0x444c igual
+C 0x4452 el tanteo del primero
+C 0x4455 dos digitos
+C 0x4458 y el del segundo
+C 0x4462 el byte de tanteo, en BCD
+C 0x4464 cuatro desplazamientos
+C 0x4465 bajan
+C 0x4466 el nibble alto
+C 0x4467 al bajo: eso son las decenas
+C 0x446b con decenas, la mascara deja pasar
+C 0x446e y si no era el ultimo digito, se queda borrando
+C 0x4470 en el ultimo, la mascara siempre pasa: el cero de la derecha SI se ve
+C 0x4472 se recupera la cuenta
+C 0x4479 el tile de al lado
+C 0x447a el mismo byte otra vez
+C 0x447d unidades a cero: sigue la mascara de antes
+C 0x447f y si no, pasa
+C 0x4481 el patron del '0' mas el digito
+C 0x4483 filtrado por la mascara
+C 0x4488 el tile siguiente
+C 0x448c la primera fila que se borra
+C 0x448f una sola
+C 0x4491 y se borra
+C 0x4494 la segunda
+C 0x4497 tambien una
+C 0x4499 igual
+C 0x449c la tercera
+C 0x449f esta con la cuenta que traiga
+C 0x44a2 y la cuarta
+C 0x44a5 cuatro filas seguidas
+C 0x44a7 la cuenta, que FILVRM se la come
+C 0x44a8 el patron 6, que es el que hace de vacio
+C 0x44aa cinco tiles de ancho
+C 0x44b0 0x20: bajar una fila
+C 0x44b5 se recupera la cuenta
+C 0x44b6 y a la fila siguiente
+C 0x44b8 hecho
+C 0x44b9 los rotulos de la pantalla de sets
+C 0x44bc los tanteos de set del primero
+C 0x44bf y donde van
+C 0x44c2 se escriben
+C 0x44c5 los del segundo
+C 0x44c8 en su columna
+C 0x44ce tantos como sets llevados
+C 0x44cf el puntero, que la rutina lo mueve
+C 0x44d0 y la cuenta
+C 0x44d1 dos digitos del set
+C 0x44d4 se recuperan
+C 0x44d5 los dos
+C 0x44d7 y a la fila de abajo
+C 0x44d8 tantas veces como sets
+C 0x44da hecho
+C 0x44de tres filas de 14 tiles
+C 0x44e1 tres
+C 0x44e3 y se borran
+C 0x44e9 el marco
+C 0x44f2 donde van las marcas del primero
+C 0x44f5 y se ponen
+C 0x44f8 las del segundo
+C 0x44fb tres sets como mucho
+C 0x44fd si este set se gano
+C 0x44fe cero es que no
+C 0x4501 y si se gano, la bola
+C 0x4507 el set siguiente
+C 0x4508 y su sitio, que esta
+C 0x450a tres tiles mas alla
+C 0x450b los tres
+C 0x450d hecho
+C 0x450e los nombres de un jugador
+C 0x4511 el modo
+C 0x4516 con un jugador, YOU contra MSX
+C 0x4518 y con dos, 1UP contra 2UP
+C 0x451b y se pinta
+C 0x454a y al remate comun
+C 0x454f la fila donde va el cursor
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x4552 el primero de los dos patrones del cursor
+C 0x4556 y el segundo
+C 0x4557 en el tile de al lado
+C 0x455b hecho
+C 0x455c (0xE042): uno o dos jugadores
+C 0x455f la fila de la primera opcion
+C 0x4562 cero es un jugador
+C 0x4563 y ahi se queda
+C 0x4564 y si no, la fila de abajo: solo cambia el byte bajo
+C 0x4566 hecho
+C 0x4567 (0xE053), el set que se va a jugar
+C 0x456a doblado, que la tabla es de palabras
+C 0x456b la tabla de los tres ordinales
+C 0x456e mas el indice
+C 0x4571 la entrada
+C 0x4572 su byte alto
+C 0x4573 que completa el puntero
+C 0x4574 y se pinta 1ST, 2ND o 3RD
+C 0x4577 y detras, GAME y LOVE ALL
+C 0x457a que es el tanteo de salida
+C 0x45a8 cuatro filas de once tiles
+C 0x45ab desde aqui
+C 0x45ae se borran
+C 0x45b1 el guion de LEVEL
+C 0x45b4 y se pinta
+C 0x45b7 la fila del cursor
+C 0x45ba que hace falta luego
+C 0x45bb once tiles
+C 0x45be a cero: borra el cursor anterior
+C 0x45c2 se recupera la fila
+C 0x45c3 la tabla de las cinco columnas
+C 0x45c6 (0xE047), el nivel
+C 0x45c9 mas el nivel
+C 0x45cc la columna que sale
+C 0x45cd sumada a la fila
+C 0x45d0 0x88: el patron del cursor
+C 0x45d5 cuatro filas
+C 0x45d7 la cuenta, que FILVRM se la come
+C 0x45d8 el byte alto de la cuenta, a cero
+C 0x45da D trae el ancho
+C 0x45db y E el patron de relleno
+C 0x45df se recupera la cuenta
+C 0x45e0 0x20: bajar una fila
+C 0x45e2 al sitio de la fila siguiente
+C 0x45e5 tantas filas como diga B
+C 0x45e7 hecho
+C 0x45e8 catorce tiles de ancho, con el patron 0x0C
+C 0x45eb desde esta fila
+C 0x45ee se borran
+C 0x45f1 el guion del cursor de nivel
+C 0x45f4 y se pinta
+C 0x4668 el guion de GAME SET
+C 0x466b y se pinta
+C 0x4679 el guion de WIN
+C 0x467c pintado
+C 0x467f y detras, el nombre del que gana
+C 0x4682 el modo
+C 0x4685 el bit 5, dos jugadores
+C 0x4687 con uno, YOU o MSX
+C 0x4689 y con dos, 1UP o 2UP
+C 0x468c (0xE050): los sets del primero
+C 0x468f dos sets es la partida ganada
+C 0x4691 y entonces gana el primero
+C 0x4693 y si no, seis bytes mas alla
+C 0x4695 o sea el nombre del OTRO
+C 0x4698 tres tiles, que es lo que mide el nombre
+C 0x469b al lado del WIN
+C 0x469e y se copian
+C 0x46ac el modo
+C 0x46b1 sin dos jugadores no hay cambio de campo
+C 0x46b7 en el segundo set, siempre
+C 0x46ba y en el cuarto en adelante, nunca
+C 0x46bf cero es que aun no se ha cambiado
+C 0x46c0 y si ya se cambio, se avisa igual
+C 0x46c2 los dos tanteos
+C 0x46c7 el de este
+C 0x46ca al llegar a diez, se cambia
+C 0x46cc y si no, el del otro
+C 0x46cd los dos
+C 0x46cf y si ninguno llega, no hay cambio
+C 0x46d4 cero es que aun no se ha hecho
+C 0x46d5 y si ya, no se repite
+C 0x46d7 (0xE140), el lado de cada uno
+C 0x46da tal como esta
+C 0x46dc y devuelto del reves: eso es cambiar de campo
+C 0x46dd uno
+C 0x46df en (0xE14E): el pestillo, para no cambiar dos veces
+C 0x46e2 uno: si hay cambio pendiente
+C 0x46e4 y a guardarlo
+C 0x46e6 cero: no lo hay
+C 0x46ea hecho
+C 0x46f3 el byte de uno
+C 0x46f4 el del otro
+C 0x46f5 que va al primero
+C 0x46f7 y el guardado, al segundo
+C 0x46f8 el byte de abajo de uno
+C 0x46f9 y el del otro
+C 0x46fc hecho
+C 0x46fd primero, los sprites fuera
+C 0x4700 la tabla de nombres
+C 0x4706 a cero
+C 0x470a A se guarda, que SETWRT lo usa
+C 0x470e al juego alterno de registros
+C 0x4713 y se vuelve
+C 0x4714 con A como estaba
+C 0x4715 hecho
+C 0x4785 cero es el fin del bloque
+C 0x4787 al mandato siguiente
+C 0x4788 el mandato, guardado
+C 0x478b comparado con el mismo sin el bit 7
+C 0x478e y a cero pelado es el 0x80
+C 0x4792 un byte del literal
+C 0x4793 y al siguiente
+C 0x4794 al juego alterno, donde esta el puerto
+C 0x4797 y de vuelta
+C 0x4798 tantos como diga el mandato
+C 0x479a y a por el mandato siguiente
+C 0x479d y al mandato siguiente
+C 0x479e al juego alterno
+C 0x47a1 y de vuelta
+C 0x47a2 tantas veces como diga la cuenta
+C 0x47a4 y a por el mandato siguiente
+C 0x47a6 BC, que hace falta entero
+C 0x47a7 el byte a dar la vuelta
+C 0x47a8 ocho bits
+C 0x47ac y entra por la izquierda de A
+C 0x47af se recupera BC
+C 0x47b0 hecho
+C 0x47b1 0xB8 en el mezclador: todos los canales callados
+C 0x47b3 y se escribe
+C 0x47b8 la melodia de arranque
+C 0x47bb desde el principio de la VRAM
+C 0x47c1 con ceros
+C 0x47c5 la tabla de los ocho registros
+C 0x47c8 ocho
+C 0x47cc el valor de este registro
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x47d0 al byte siguiente de la tabla
+C 0x47d2 un registro menos
+C 0x47d3 hasta los ocho
+C 0x47d5 hecho
+C 0x47de el registro 7, el del color de fondo
+C 0x47e0 y se escribe con lo que traiga B
+C 0x47e9 el del joystick, guardado
+C 0x47ed y sumado al del teclado
+C 0x47ee (0xE002), el modo
+C 0x47f6 el sitio del mando del primero
+C 0x47fd el byte de abajo, que es donde van los flancos
+C 0x47ff hecho
+C 0x4800 0x8F: el puerto 1 del PSG
+C 0x4807 el registro 14 devuelve lo leido
+C 0x4809 con la interrupcion cerrada, que el PSG es de dos pasos
+C 0x480d y se vuelve a abrir
+C 0x4811 hecho
+C 0x4812 la fila 7 de la matriz
+C 0x4817 pulsado es cero, asi que se invierte
+C 0x4819 el bit 5, que es el boton
+C 0x481b guardado
+C 0x481c y ahora la fila 8, la de las flechas
+C 0x4821 invertida tambien
+C 0x4822 dos desplazamientos
+C 0x4823 dejan la primera flecha en su sitio
+C 0x4824 y lo demas se guarda para las siguientes
+C 0x4827 sumado a lo que habia
+C 0x4828 y guardado
+C 0x4829 lo que quedaba
+C 0x482a dos desplazamientos mas
+C 0x482b para el par siguiente
+C 0x482c y otra vez a la reserva
+C 0x482f sumado
+C 0x4830 y guardado
+C 0x4831 lo que queda
+C 0x4832 un desplazamiento mas
+C 0x4835 y todo junto
+C 0x4836 hecho: el teclado ha quedado con la MISMA forma que el joystick
+C 0x4837 el modo
+C 0x483c con dos jugadores, el mando de verdad
+C 0x4841 y con uno, a guardar el que salga
+C 0x4845 el joystick del puerto 2
+C 0x4848 guardado
+C 0x4849 y su teclado
+C 0x484c los dos suman
+C 0x4a0f (0xE00A): catorce pasos
+C 0x4a15 (0xE00E): la fila por la que va
+C 0x4a18 y a cargar sus patrones
+C 0x4a1b el bloque comprimido del logotipo
+C 0x4a1e a 0x2200, que con catorce bits es 0x6200
+C 0x4a21 en los tres tercios
+C 0x4a24 y su color
+C 0x4a27 0xD8 bytes, los mismos 27 tiles
+C 0x4a2c blanco sobre transparente
+C 0x4a2f la fila por la que iba
+C 0x4a35 menos 0x20, o sea una fila mas arriba
+C 0x4a36 y se guarda
+C 0x4a3b tres tiles
+C 0x4a43 y doce mas
+C 0x4a46 la cuenta, que venia en C
+C 0x4a4a a cero
+C 0x4a4e (0xE00A), los pasos que quedan
+C 0x4a52 hecho
+C 0x4a53 la fila, que el bucle la mueve
+C 0x4a57 al tile de al lado
+C 0x4a59 tantos como diga B
+C 0x4a5b y se recupera la fila de entrada
+C 0x4a5f mas 0x20: la de abajo
+C 0x4a60 que es lo que se devuelve
+C 0x4af8 los quince colores lisos y la fuente
+C 0x4afe a 0x2400, que con catorce bits es 0x6400
+C 0x4b01 en dos tercios
+C 0x4b04 su color
+C 0x4b0a en dos tercios tambien
+C 0x4b0d y el mismo bloque otra vez
+C 0x4b10 desde 0x0600: dos bandas de color con el mismo dibujo
+C 0x4b16 el origen del espejo
+C 0x4b19 y su destino
+C 0x4b1c dos tercios
+C 0x4b1e la cuenta
+C 0x4b1f el origen
+C 0x4b20 y el destino
+C 0x4b24 0x200 bytes, dandoles la vuelta
+C 0x4b27 se recupera el destino
+C 0x4b28 y se le suma
+C 0x4b2b un tercio
+C 0x4b2c que vuelve a DE
+C 0x4b2d el origen, SIN tocar
+C 0x4b2e y la cuenta
+C 0x4b2f los dos tercios
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x4b31 el destino, en la zona alta de PATRONES
+C 0x4b34 la fuente comprimida
+C 0x4b37 aqui UNA sola vez, sin repetir por tercios
+C 0x4b3a 0x70: rojo claro sobre transparente
+C 0x4b3c 0x1600 es el COLOR de los patrones que acaba de dejar en 0x3600
+C 0x4b3f 0x180 bytes
+C 0x4b45 y a cargar los sprites
+C 0x4b48 la tabla de nombres
+C 0x4b4b 0xE0: tinta 14 sobre fondo NEGRO
+C 0x4b4d y se escribe en el registro 7
+C 0x4b50 el bloque de nombres del titulo
+C 0x4b53 que trae la mesa y las dos opciones
+C 0x4b56 los sprites de la pantalla de titulo
+C 0x4b59 volcados a la VRAM
+C 0x4b5c los dos patrones del cursor
+C 0x4b5f puesto en su fila
+C 0x4b62 el guion de las dos opciones
+C 0x4b65 y se pinta
+C 0x4b68 el bloque de sprites de la mesa
+C 0x4b6b y se descomprime
+C 0x4b6e los atributos de la pantalla de titulo
+C 0x4b71 al buffer de sprites
+C 0x4b74 trece bytes: tres sprites y el 0xD0 que corta
+C 0x4b77 copiados
+C 0x4b79 hecho
+C 0x4b8f entrada con la cuenta al maximo: el rotulo entero de golpe
+C 0x4b91 y al bucle
+C 0x4b93 (0xE045): por que columna va
+C 0x4b97 y se adelanta una
+C 0x4b98 la columna, guardada
+C 0x4b99 una mas
+C 0x4b9a que es cuantos bytes se copian
+C 0x4b9d 0x16 menos la columna: se empieza por el FINAL del mapa
+C 0x4b9e y pasada la ultima, se acabo
+C 0x4ba3 el trozo que toca
+C 0x4ba6 el byte alto de la cuenta, a cero
+C 0x4bab la cuenta
+C 0x4bac y el origen
+C 0x4bad se copia la primera fila
+C 0x4bb0 se recupera el origen
+C 0x4bb1 y la cuenta
+C 0x4bb4 0x17 mas alla, que es lo que mide una fila del mapa
+C 0x4bba y se copia la segunda
+C 0x4bbd cero: aun queda rotulo
+C 0x4bbf hecho
+C 0x4bc2 y aqui, con el rotulo ya entero
+C 0x4bf1 0x1F: el patron de la pelota del menu
+C 0x4bf3 su sitio en el buffer de sprites
+C 0x4bf7 la coordenada de abajo
+C 0x4bf8 tal como esta
+C 0x4bfb al llegar a 0x8A, la pelota se para
+C 0x4bfe la otra coordenada
+C 0x4c05 mas el paso
+C 0x4c08 el valor que sale
+C 0x4c09 y a la pelota
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x4c0a (0xE046), el paso de la rampa
+C 0x4c0d tal como esta
+C 0x4c0e uno mas
+C 0x4c11 mientras no llegue a ocho, ese
+C 0x4c13 y al llegar, vuelta a empezar
+C 0x4c14 guardado
+C 0x4c15 hecho
+C 0x4c16 la altura de la pelota
+C 0x4c19 fijada en 0x14
+C 0x4c1a hecho
+C 0x4c26 el reloj filtrado por la mascara
+C 0x4c27 si no sale cero, este cuadro no toca
+C 0x4c29 y se cuenta como saltado
+C 0x4c30 doblada, que la tabla es de palabras
+C 0x4c31 la tabla de las cinco secuencias
+C 0x4c34 mas el indice
+C 0x4c37 la entrada
+C 0x4c38 su byte alto
+C 0x4c39 que completa el puntero
+C 0x4c3d el paso por el que va
+C 0x4c3f sumado al guion
+C 0x4c42 el desplazamiento de este paso
+C 0x4c45 el 0xA0 cierra la secuencia
+C 0x4c47 (0xE074), la posicion del muneco
+C 0x4c4b y se le suma el desplazamiento
+C 0x4c4e devuelve distinto de cero: aun queda guion
+C 0x4c4f cero
+C 0x4c53 y devuelve cero: la secuencia se acabo
+C 0x4c55 hecho
+C 0x4ce3 el tercer juego de posiciones
+C 0x4ce6 el reloj
+C 0x4ce9 el bit 3, que va cambiando cuatro veces por segundo
+C 0x4ceb con el bit puesto, ese
+C 0x4ced y con el apagado, el primero
+C 0x4cf0 el buffer de sprites de los munecos
+C 0x4cf3 21 bytes
+C 0x4cf6 copiados
+C 0x4cf8 el sitio de los tres patrones
+C 0x4cfb y los patrones
+C 0x4cfe tres
+C 0x4d01 copiados a la VRAM
+C 0x4d04 hecho
+C 0x4d05 el segundo juego de posiciones
+C 0x4d08 y al mismo remate
+C 0x4d44 saca el rotulo del juego entero, de golpe
+C 0x4d47 los sprites de la mesa
+C 0x4d4a al buffer
+C 0x4d4d nueve bytes: dos sprites y el 0xD0
+C 0x4d50 copiados
+C 0x4d52 y el rotulo pequeno, entero tambien
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x5108 cerrar la interrupcion, que esto lo llaman los dos lados
+C 0x5109 y salvar lo que se toca
+C 0x510a (0xE002), el modo
+C 0x510f fuera de la partida no suena
+C 0x5111 y dentro, adelante
+C 0x5114 se salva HL
+C 0x5115 DE
+C 0x5116 BC
+C 0x5117 y AF
+C 0x5118 se reparte la melodia
+C 0x511b y se devuelven todos
+C 0x511c BC
+C 0x511d DE
+C 0x511e y HL
+C 0x511f abre la interrupcion
+C 0x5120 hecho
+C 0x5124 el primer canal de melodia
+C 0x512b por debajo de 9, un efecto corto
+C 0x512f de 9 a 0x18, dos canales
+C 0x5132 y de ahi arriba, tres
+C 0x5137 un canal en vez de dos
+C 0x5139 los seis bits bajos, que es el numero
+C 0x513d 0x25 o mas es que no suena nada
+C 0x513f la que se quiere poner
+C 0x5140 su numero
+C 0x5144 si tampoco es melodia de verdad, entra sin pelear
+C 0x5146 la que suena
+C 0x5147 su numero, que es su prioridad
+C 0x514a la nueva
+C 0x514b su numero
+C 0x514e y si es menor, se queda como estaba
+C 0x5150 la base de la tabla de melodias
+C 0x5153 mas el indice doblado
+C 0x5157 dos bytes atras: los de control del canal
+C 0x515a el byte siguiente
+C 0x515b duracion 1 tambien
+C 0x515d el siguiente
+C 0x515f y el siguiente
+C 0x5161 el numero de melodia, que hara de prioridad
+C 0x5162 el siguiente
+C 0x5163 y el byte alto del guion
+C 0x5164 leido
+C 0x5165 y guardado
+C 0x5168 al bloque del canal siguiente
+C 0x516b y a su entrada de la tabla
+C 0x516e hecho
+C 0x5172 la copia del registro 7
+C 0x5173 el canal
+C 0x5176 el primero no se desplaza
+C 0x5178 y los demas, uno menos
+C 0x517a tres bits
+C 0x517b por canal
+C 0x517c D distinto de 1 es cerrar
+C 0x517d y a uno, abrir
+C 0x5180 cerrar es borrar el bit
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x5186 el bit 5, el ruido del tercer canal
+C 0x5188 sin el, se escribe tal cual
+C 0x518a y con el, se apaga el tono
+C 0x518c la copia, guardada
+C 0x518f y al registro
+C 0x5190 el 7, el del mezclador
+C 0x5195 la copia del registro 7
+C 0x51a1 al juego alterno, donde va la cuenta de canales
+C 0x51a7 y de vuelta
+C 0x51ab cero es canal libre
+C 0x51ac y ocupado, se sigue su melodia
+C 0x51b1 con el libre, silencio
+C 0x51b7 el canal siguiente: los registros van de dos en dos
+C 0x51b8 al juego alterno
+C 0x51b9 el bloque del canal siguiente, quince bytes mas alla
+C 0x51bb los tres canales
+C 0x51bd hecho
+C 0x51be el bit 6 de la copia del registro 7
+C 0x51c0 abrir
+C 0x51c2 y si no estaba, se abre el paso del canal
+C 0x51c5 el estado del canal
+C 0x51c8 mirado
+C 0x51d3 y su byte alto
+C 0x51d6 el mandato por el que va
+C 0x51d9 0xFE y 0xFF cierran la melodia
+C 0x51dc el bit 7 del estado: el canal esta en un efecto
+C 0x51e0 y entonces se lee por otro camino
+C 0x51e5 si no es 0x20 pelado, es otra cosa
+C 0x51ec el byte siguiente
+C 0x51ed leido
+C 0x51ee y al registro
+C 0x51f4 el siguiente
+C 0x51f5 leido
+C 0x51f6 y al registro
+C 0x51fc el siguiente
+C 0x51fd leido
+C 0x51fe solo el nibble bajo, que es lo que cabe
+C 0x5200 y al registro
+C 0x5206 y al remate
+C 0x520a nibble alto 2
+C 0x520c el byte
+C 0x520d y si no lo es, a mirar el siguiente caso
+C 0x520f el nibble bajo, que es la duracion
+C 0x5214 el byte siguiente
+C 0x5215 leido
+C 0x5216 y guardado
+C 0x5219 nibble alto 1: ruido
+C 0x521b y si no, al caso siguiente
+C 0x521d el byte
+C 0x5220 al registro
+C 0x5221 el canal
+C 0x5224 solo el tercero lleva la correccion
+C 0x5226 el byte siguiente
+C 0x5229 guardado
+C 0x522a con el bit 4 puesto, no se corrige
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x522c el periodo
+C 0x522d menos 0x10: la correccion del ruido
+C 0x522f devuelto
+C 0x5230 y se apaga el bit que la pedia
+C 0x5232 al byte anterior
+C 0x523a con D a cero, se cierra el paso
+C 0x523d y al byte siguiente
+C 0x5242 sin el bit, se sigue por lo normal
+C 0x5244 el canal
+C 0x5245 solo el tercero
+C 0x5247 el byte del guion
+C 0x5248 y si no es el tercero, tampoco
+C 0x524a se anota por donde va el guion
+C 0x524d el valor guardado
+C 0x524e un paso menos de la nota
+C 0x5251 y al agotarse, se apaga
+C 0x5253 y si queda, se recarga
+C 0x5255 el nibble alto
+C 0x5257 guardado
+C 0x5259 y el bajo, que sale del XOR
+C 0x525a el byte siguiente
+C 0x525b que es el otro medio periodo
+C 0x525f a HL, que es donde lo quiere la rutina de tono
+C 0x5263 el nibble alto
+C 0x5265 tres desplazamientos
+C 0x5266 lo bajan
+C 0x5267 al nibble de las unidades
+C 0x526b si aun queda nota, se sigue
+C 0x526d 0x10 mas: el escalon de volumen
+C 0x526f al registro
+C 0x5270 y se escribe
+C 0x5272 el volumen
+C 0x5276 recarga la duracion
+C 0x5279 tres cuadros mas
+C 0x527e y a escribir el volumen
+C 0x5280 D a uno para cerrar el paso del canal
+C 0x5285 cero
+C 0x5289 en el paso de la nota
+C 0x528c y volumen cero
+C 0x528d que se escribe
+C 0x528f un cuadro menos
+C 0x5292 y al agotarse, se lee el guion
+C 0x5298 el corte
+C 0x529e mientras no alcance a la duracion, sigue bajando
+C 0x52a0 por debajo de tres
+C 0x52a2 se apaga del todo
+C 0x52a4 y si no, se deja como esta
+C 0x52a5 un paso mas del corte
+C 0x52ab uno menos: el volumen decae solo
+C 0x52ad guardado
+C 0x52b0 y al registro
+C 0x52b1 el canal
+C 0x52b3 y esta cuenta lo convierte en su registro de volumen
+C 0x52b5 el valor
+C 0x52b9 el byte del guion
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x52ba solo el nibble alto
+C 0x52be el byte entero otra vez
+C 0x52bf si no era D, al caso siguiente
+C 0x52c1 el nibble bajo
+C 0x52c6 el byte siguiente
+C 0x52c7 leido
+C 0x52ca por debajo de 0xF0 no es este caso
+C 0x52cc el nibble bajo
+C 0x52ce en (ix+6): el volumen de arranque
+C 0x52d1 el byte siguiente
+C 0x52d2 leido
+C 0x52d5 por debajo de 0xE0 tampoco
+C 0x52d7 el nibble bajo
+C 0x52dc el byte siguiente
+C 0x52dd que ya es la nota
+C 0x52e0 la cuenta de sumas
+C 0x52e1 el multiplicador de duracion
+C 0x52e4 sin cuenta, se queda como esta
+C 0x52e9 y si no, se suma tantas veces
+C 0x52f2 el nibble alto
+C 0x52f5 tres desplazamientos
+C 0x52f6 lo bajan
+C 0x52f7 a las unidades
+C 0x52f8 guardado: es el numero de nota
+C 0x52fb el 12 es silencio, y entonces no se toca volumen
+C 0x5300 el volumen de arranque, a su sitio
+C 0x5303 recarga la duracion
+C 0x5306 la nota
+C 0x530a sumada a la tabla de periodos
+C 0x530e y el byte alto a cero: cabe en ocho bits
+C 0x57cc a la siguiente, para propagar con `ldir`
+C 0x57cf 0x200 bytes de estado
+C 0x57d2 un cero al principio
+C 0x57d4 y se propaga
+C 0x57d6 el buffer de sprites
+C 0x57d9 igual, a la siguiente
+C 0x57dc 0x80 bytes: los 32 sprites
+C 0x57e1 y se propaga el 0xE0
+C 0x57e3 el modo
+C 0x57e8 con dos jugadores no se toca el lado
+C 0x57ed el primer set
+C 0x57ee y en los demas tampoco
+C 0x57f0 0xFF: el lado de salida
+C 0x57f8 los ocho bytes del primero
+C 0x57fb ocho
+C 0x57fe copiados
+C 0x5800 los mismos otra vez
+C 0x5806 ocho
+C 0x5809 y al segundo: los dos empiezan igual
+C 0x580d el bloque del jugador cercano
+C 0x5810 su x
+C 0x5811 el byte siguiente
+C 0x5814 su y
+C 0x5815 el siguiente
+C 0x5816 0x3A
+C 0x5818 y su tercera coordenada
+C 0x5820 mas el nivel doblado
+C 0x5823 el primer byte del par
+C 0x5824 el siguiente
+C 0x5825 y el segundo
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x5829 el sitio del otro jugador
+C 0x582c al primero
+C 0x582d y al segundo
+C 0x582e el byte de al lado
+C 0x582f en los dos
+C 0x5830 el otro del par
+C 0x5831 al primero
+C 0x5832 y al segundo: los dos arrancan iguales
+C 0x5835 el bloque del jugador lejano
+C 0x5838 su x, al otro lado de la mesa
+C 0x5839 el byte siguiente
+C 0x583a 0x78, media altura
+C 0x583c guardada
+C 0x583d el siguiente
+C 0x583e 0x3A
+C 0x5840 y su tercera coordenada
+C 0x5841 el siguiente
+C 0x5842 el nivel
+C 0x5845 guardado
+C 0x5847 y el doble, que hace falta luego
+C 0x5848 mas el propio nivel: tres veces
+C 0x584c sumado a la tabla
+C 0x584f el destino
+C 0x5852 ocho bytes
+C 0x5855 copiados
+C 0x5857 se recupera el nivel doblado
+C 0x5859 la tabla de pares
+C 0x585c mas el indice
+C 0x585f el destino
+C 0x5863 escrito
+C 0x5864 el byte siguiente de la tabla
+C 0x5865 y el de al lado del destino
+C 0x5866 donde va el MISMO valor: el `inc hl` no llega a usarse
+C 0x5867 el nivel doblado otra vez
+C 0x5868 la tabla de un byte por nivel
+C 0x586b mas el indice
+C 0x586e el valor
+C 0x586f a su sitio
+C 0x5875 los colores de sprite
+C 0x5878 al buffer
+C 0x587b ocho
+C 0x587e copiados
+C 0x5880 dos
+C 0x5885 hecho
+C 0x58da la fase 0
+C 0x58db en ella no se mueve nadie
+C 0x58dd la 8
+C 0x58df tampoco
+C 0x58e1 ni la 9
+C 0x58e3 y en las demas, los mandos valen
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x58e5 cero
+C 0x58e9 el mando crudo del segundo
+C 0x58ec los flancos del primero
+C 0x58ef y los del segundo: en esas fases nadie manda
+C 0x58f5 la fase 0
+C 0x58f6 en ella no se mueve nadie
+C 0x58f8 la 2
+C 0x58fa tampoco
+C 0x58fc la 4
+C 0x58fe tampoco
+C 0x5900 y de la 9 en adelante
+C 0x5902 tampoco
+C 0x5910 el jugador cercano
+C 0x5913 y el lejano
+C 0x591c el buffer de sprites
+C 0x5922 y se copia entero a la VRAM
+C 0x592c dos bytes de mando
+C 0x592e y se ajusta lo que se acaba de pulsar
+C 0x5934 cero es que no esta golpeando
+C 0x5938 y si lo esta, manda la trayectoria
+C 0x593b siete
+C 0x593d 0xF9: el patron de velocidad, seis cuadros de cada ocho
+C 0x593f su posicion
+C 0x5942 y la de al lado
+C 0x5945 y se le acerca a la pelota
+C 0x5948 los flancos del primero
+C 0x594b la fase del punto
+C 0x594f fuera de la 1, el mando entero vale
+C 0x5951 el mando
+C 0x5954 y devuelto con solo las dos direcciones que la fase 1 admite
+C 0x5955 las dos coordenadas
+C 0x595a guardadas en (ix+8), para saber luego cuanto se ha movido
+C 0x595d a la coordenada siguiente
+C 0x595f las dos
+C 0x5961 y se devuelve IX
+C 0x5963 a donde estaba
+C 0x5965 las banderas del muneco
+C 0x596a devueltas sin las que no sobreviven al cuadro
+C 0x596d la fase del punto
+C 0x5970 leida
+C 0x5971 la 1
+C 0x5973 fuera de ella, el mando entero
+C 0x5975 el byte de al lado
+C 0x5976 leido
+C 0x5977 y mirado
+C 0x5978 el mando
+C 0x5979 con la condicion, entero
+C 0x597e sin acarreo, esa direccion no se pulso
+C 0x5984 y a rematar
+C 0x5986 el bit siguiente
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x6be5 la columna, que hace falta al final
+C 0x6be6 la coordenada larga
+C 0x6be9 al multiplicando
+C 0x6bec por 0x8E: cuanto sube la fila con la distancia
+C 0x6bef el producto, guardado
+C 0x6bf0 la altura
+C 0x6bf3 al multiplicando
+C 0x6bf6 por 0xD4, el mismo factor de la profundidad
+C 0x6bf9 solo el byte alto
+C 0x6bfa y se recupera el otro producto
+C 0x6bfc si se desborda, la pelota se sale de la pantalla
+C 0x6bfe la suma de los dos
+C 0x6bff 0xB2: la fila del horizonte
+C 0x6c01 menos lo que haya subido
+C 0x6c02 y si se pasa, fuera
+C 0x6c04 la fila que queda
+C 0x6c05 0xBF: el factor de la anchura
+C 0x6c07 y se multiplican
+C 0x6c0a el resultado, guardado
+C 0x6c0b la coordenada larga otra vez
+C 0x6c0e al multiplicando
+C 0x6c0f y por el factor de la profundidad
+C 0x6c11 multiplicados
+C 0x6c14 el byte alto
+C 0x6c15 guardado
+C 0x6c16 la altura
+C 0x6c19 al multiplicando
+C 0x6c1a por el factor de la fila
+C 0x6c1c multiplicados
+C 0x6c1f se recupera el otro
+C 0x6c20 mas 0x77, el desplazamiento del horizonte
+C 0x6c22 el byte alto, a cero
+C 0x6c24 y el bajo, el resultado
+C 0x6c25 sin acarreo, ahi se queda
+C 0x6c27 y con el, sube el alto
+C 0x6c28 el par, guardado
+C 0x6c29 su byte bajo
+C 0x6c2a menos la aportacion de la altura
+C 0x6c2b la fila que sale
+C 0x6c2c y si no hubo prestamo, esa
+C 0x6e3c (0xE10D): hacia que lado sale la pelota
+C 0x6e3f el efecto
+C 0x6e40 por la curva que sube
+C 0x6e43 y otra vez
+C 0x6e44 por la que baja
+C 0x6e47 uno de los factores del efecto
+C 0x6e4a al multiplicando
+C 0x6e4b guardado, que hace falta dos veces
+C 0x6e4c y el otro
+C 0x6e4f al multiplicador
+C 0x6e50 multiplicados
+C 0x6e53 solo el byte alto
+C 0x6e54 a su sitio
+C 0x6e57 se recupera el multiplicando
+C 0x6e58 y el otro factor
+C 0x6e5b al multiplicador
+C 0x6e5c multiplicados
+C 0x6e5f el byte alto
+C 0x6e60 a su sitio
+C 0x6e63 la velocidad de salida
+C 0x6e67 por el factor del golpe
+C 0x6e6a multiplicados a 16 bits
+C 0x6e6d y a la velocidad de subida de la pelota
+C 0x6e70 el alcance del golpe
+C 0x6e73 por debajo de 0x1E el golpe es corto
+C 0x6e75 cero
+C 0x6e77 y con alcance largo, ese
+C 0x6e79 uno: la pelota arranca CAYENDO
+C 0x6e7b y se anota
+C 0x6e7e la velocidad otra vez
+C 0x5ac7 con dos golpes o mas, no hay golpe especial
+C 0x5ac9 y se sale
+C 0x5acb el mando
+C 0x5acc solo con esa direccion vale
+C 0x5ace y si no, fuera
+C 0x5ad0 la fase del intercambio
+C 0x5ad3 en la 1 no vale
+C 0x5ad4 y se sale
+C 0x5ad6 (0xE14C), la falta
+C 0x5ad9 con falta pendiente
+C 0x5ada tampoco
+C 0x5adc la altura de la pelota
+C 0x5adf por debajo de la horquilla
+C 0x5ae0 no llega
+C 0x5ae2 y por encima
+C 0x5ae3 tampoco
+C 0x5ae5 la horquilla estrecha, la del golpe bueno
+C 0x5ae6 por debajo, golpe normal
+C 0x5ae8 y por encima
+C 0x5ae9 tambien
+C 0x5aeb (0xE147), el roce de red
+C 0x5aee sin el
+C 0x5aef no hay golpe especial
+C 0x5af1 uno: golpe especial
+C 0x5af3 y se guarda
+C 0x5af5 cero: normal
+C 0x5af6 en (0xE14F)
+C 0x5af9 la posicion del muneco
+C 0x5afc cuatro menos
+C 0x5afe guardada
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x5e75 la cuenta de sprites, que el bucle la pisa
+C 0x5e76 y B pasa a llevar la coordenada de referencia
+C 0x5e77 el primer byte del fotograma
+C 0x5e78 el 0x81 dice que este fotograma lleva menos sprites
+C 0x5e7a y entonces se corta
+C 0x5e7c el desplazamiento vertical
+C 0x5e7d sumado a donde esta el muneco
+C 0x5e7e a la Y del sprite
+C 0x5e7f al byte siguiente del fotograma
+C 0x5e80 y al del sprite
+C 0x5e81 el desplazamiento horizontal
+C 0x5e82 sumado
+C 0x5e83 a la X del sprite
+C 0x5e84 al siguiente
+C 0x5e85 y al siguiente
+C 0x5e86 saltandose el color, que ya esta puesto
+C 0x5e87 el numero de patron
+C 0x5e88 a su sitio
+C 0x5e89 al byte siguiente del fotograma
+C 0x5e8a y al del sprite siguiente
+C 0x5e8b la referencia, que hace falta en la vuelta siguiente
+C 0x5e8c y se recupera la cuenta
+C 0x5e8d tantos sprites como diga
+C 0x5e8f y al puntero de los patrones
+C 0x5e91 se recupera la cuenta
+C 0x5e92 0xE0: fuera de la pantalla
+C 0x5c09 la coordenada larga de la pelota
+C 0x5c0c si aun no ha llegado
+C 0x5c0d no se hace nada
+C 0x5c0e ocho mas alla
+C 0x5c10 si ya ha pasado
+C 0x5c11 tampoco
+C 0x5c12 la fase del intercambio
+C 0x5c15 de la 3 en adelante
+C 0x5c17 no
+C 0x5c18 el nivel
+C 0x5c1b la tabla de umbrales por nivel
+C 0x5c1e mas el nivel
+C 0x5c21 los puntos ya jugados
+C 0x5c24 contra el umbral de este nivel
+C 0x5c25 y por debajo, la maquina juega flojo
+C 0x5c27 (0xE1A9): el patron de aciertos
+C 0x5c2a se rota un bit
+C 0x5c2c y si sale cero, este golpe lo falla a proposito
+C 0x5c2e uno: el golpe bueno
+C 0x5c30 la altura de la pelota
+C 0x5c33 por encima de 0x49
+C 0x5c35 se queda con ese
+C 0x5c37 y si no, decide por donde la manda
+C 0x5c3a ocho
+C 0x5c3c segun el lado
+C 0x5c3e o cuatro
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x709d la fase del punto
+C 0x70a0 leida
+C 0x70a1 la 1 es el saque
+C 0x70a2 y fuera de ella, se juega
+C 0x70a4 el paso dentro de la fase
+C 0x70a5 leido
+C 0x70a6 a cero
+C 0x70a7 aun se esta colocando
+C 0x70a9 el paso 1
+C 0x70aa y de ahi arriba, a jugar
+C 0x70ac (0xE10E): la pelota tiene que estar cayendo
+C 0x70af si sube
+C 0x70b0 no se saca
+C 0x70b1 la altura
+C 0x70b4 por encima de 0x43 aun esta alta
+C 0x70b6 y entonces se decide por otro camino
+C 0x70b8 4: el mando fingido que golpea
+C 0x70ba y se devuelve
+C 0x70bb 1: el que solo coloca
+C 0x70bd y se devuelve
+C 0x70be 0x47, el umbral por omision
+C 0x70c0 el alcance del ultimo golpe
+C 0x59e0 el estado 2 es "trayectoria plantada"
+C 0x59e2 y en los demas, se sigue el guion
+C 0x59e4 un cuadro menos de la vuelta
+C 0x59e7 lo que queda
+C 0x59ea contra donde empezo
+C 0x59ed comparados
+C 0x59ee y mientras no vuelva, no se hace nada
+C 0x59ef cero
+C 0x59f0 el estado del movimiento, a cero: se acabo
+C 0x59f3 las banderas
+C 0x59f6 se quedan solo las dos de direccion
+C 0x59f8 y se devuelven
+C 0x59fb la posicion de partida
+C 0x59fe que vuelve a ser la actual
+C 0x5a01 y la otra coordenada
+C 0x5a04 tambien: el muneco queda donde empezo
+C 0x5a07 hecho
+C 0x6ccd la fase del intercambio
+C 0x6cd0 solo en la 1
+C 0x6cd1 y en las demas, nada
+C 0x6cd2 (0xE111), el frenado
+C 0x6cd5 a cero
+C 0x6cd6 no hay nada que corregir
+C 0x6cd7 la velocidad de subida
+C 0x6cda la clase de golpe
+C 0x6cdd a cero
+C 0x6cde y si no, por el otro camino
+C 0x6ce0 0x80, medio escalon
+C 0x6ce2 sumado a la velocidad
+C 0x6ce3 y devuelto
+C 0x6ce4 sin acarreo, ya esta
+C 0x6ce5 y con el, al byte alto
+C 0x6ce6 que sube uno
+C 0x6ce7 hecho
+C 0x6ce8 el byte alto
+C 0x6ce9 leido
+C 0x6cea y mirado
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x5be4 el nivel
+C 0x5be7 guardado
+C 0x5be8 el alcance del ultimo golpe
+C 0x5beb 0x1D es el golpe corto
+C 0x5bed y si no lo fue, se sigue
+C 0x5bef el nivel
+C 0x5bf0 mas cinco: la maquina responde mejor a los cortos
+C 0x5bf2 guardado
+C 0x5bf3 el nivel otra vez
+C 0x5bf6 cero es el mas facil
+C 0x5bf7 y en los demas, adelante
+C 0x5bf9 (0xE1AB): el pestillo del nivel facil
+C 0x5bfc leido
+C 0x5bfd a cero
+C 0x5bfe y si ya estaba, se falla a proposito
+C 0x5c00 y si no, se echa: en el nivel facil solo acierta una de cada dos
+C 0x5c01 el indice que ha quedado
+C 0x5c02 la tabla de respuestas
+C 0x5c05 mas el indice
+C 0x5c08 y el valor que sale
+C 0x6fd7 el frenado, que hace falta tres veces
+C 0x6fd8 la primera velocidad
+C 0x6fdc y aqui se le SUMA en vez de restarsele
+C 0x6fdf devuelta
+C 0x6fe2 el frenado
+C 0x6fe3 guardado otra vez
+C 0x6fe4 la segunda velocidad
+C 0x6fe8 sumada
+C 0x6feb devuelta
+C 0x6fee y el frenado por ultima vez
+C 0x6fef la tercera velocidad
+C 0x6ff3 esta con el otro signo
+C 0x6ff6 devuelta
+C 0x6ff9 hecho
+C 0x5d09 de la fase 4 en adelante
+C 0x5d0b se mira el roce de red
+C 0x5d0d y por debajo de la 2
+C 0x5d0f no hay golpe especial
+C 0x5d11 el nivel
+C 0x5d14 guardado
+C 0x5d15 cuatro
+C 0x5d17 menos el nivel: cuanto mas alto, MENOS puntos hacen falta
+C 0x5d18 la tabla de umbrales
+C 0x5d1b mas el indice
+C 0x5d1e los puntos jugados
+C 0x5d21 contra el umbral
+C 0x5d22 y por debajo, nada
+C 0x5d24 el roce de red
+C 0x5d27 a cero
+C 0x5d28 no hay golpe especial
+C 0x5d2a uno: si lo hay
+C 0x5d2c y se guarda
+C 0x5d2e cero
+C 0x5d2f en (0xE14F)
+C 0x5d32 el fotograma elegido
+C 0x5d33 a (0xE1A0)
+C 0x5d36 hecho
+C 0x6735 el modo
+C 0x6738 sin dos jugadores no hay cambio
+C 0x673a y se sigue
+C 0x673c el set
+C 0x673f en el primero
+C 0x6740 siempre
+C 0x6742 en el segundo, no
+C 0x6743 y de ahi arriba, tampoco
+C 0x6745 (0xE14A), el deuce
+C 0x6748 a cero
+C 0x6749 y con deuce, siempre
+C 0x674b los dos tanteos
+C 0x674d desde el primero
+C 0x6750 el de este
+C 0x6751 al llegar a diez
+C 0x6753 se cambia
+C 0x6755 y si no, el del otro
+C 0x6756 los dos
+C 0x6c39 el par, desplazado
+C 0x6c3b un bit a la derecha: dividido entre dos
+C 0x6c3d el byte bajo
+C 0x6c3e guardado
+C 0x6c41 se recupera el dividendo
+C 0x6c42 y se divide
+C 0x6c45 el byte alto del cociente
+C 0x6c46 a cero cabe en un byte
+C 0x6c47 el bajo
+C 0x6c48 y si no cabe, la pelota se sale
+C 0x6c4a menos 0x10: la mitad del sprite
+C 0x6c4c y a rematar
+C 0x6c4e 0xF0: fuera de la pantalla
+C 0x6c50 se recupera la columna
+C 0x6c51 y la fila que sale
+C 0x6c52 hecho
+C 0x6e23 el alcance del golpe
+C 0x6e26 guardado
+C 0x6e27 donde van los factores
+C 0x6e2a por la curva que baja
+C 0x6e2d el alcance otra vez
+C 0x6e2e y por la que sube
+C 0x6e31 el efecto que ha salido
+C 0x6e34 guardado
+C 0x6e35 por debajo de 0x1F
+C 0x6e37 cero
+C 0x6e39 y ese se queda
+C 0x6e3b y si no, uno: el lado hacia el que sale cambia
+C 0x70c9 (0xE10C): de quien es el turno
+C 0x70cc a cero
+C 0x70cd no se saca
+C 0x70cf la coordenada de la pelota
+C 0x70d2 contra el umbral
+C 0x70d3 y pasado, tampoco
+C 0x70d5 el alcance del ultimo golpe
+C 0x70d8 0x2A es el rebote de la red
+C 0x70da 4: el mando fingido que golpea
+C 0x70dc y si no fue la red, ese
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x64d0 cero es que la pelota viene hacia el
+C 0x64d1 y si no, no hay golpe que valga
+C 0x64d3 el roce de red
+C 0x64d6 a cero
+C 0x64d7 se mira si ya golpeo
+C 0x64d9 el saque
+C 0x64dc a cero
+C 0x64dd y con saque pendiente, no
+C 0x64df la fase del intercambio
+C 0x64e2 la 2
+C 0x64e4 y fuera de ella, tampoco
+C 0x64e6 (0xE148): si ya se golpeo en este vuelo
+C 0x64e9 a cero
+C 0x474c al juego alterno, donde va la cuenta
+C 0x474d la cuenta
+C 0x474e y el origen
+C 0x474f se copia el bloque
+C 0x4752 un tercio
+C 0x4755 mas al destino
+C 0x4756 se recupera el origen
+C 0x4757 y la cuenta
+C 0x4758 al juego alterno otra vez
+C 0x4759 los tres tercios
+C 0x475b hecho
+C 0x475c la mascara que deja pasar los bytes
+C 0x475e y se entra sin leer cabecera
+C 0x5e9b el puntero que va detras de los datos de sprite
+C 0x5e9c su byte bajo
+C 0x5e9d el siguiente
+C 0x5e9e y su byte alto
+C 0x5e9f a HL: ahi esta el bloque comprimido
+C 0x5ea0 su primer word
+C 0x5ea1 el byte siguiente
+C 0x5ea2 y su byte alto
+C 0x5ea3 a HL: el destino en la VRAM
+C 0x5ea4 y DE queda en el primer mandato
+C 0x5ea5 se abre el puerto de escritura
+C 0x5ea8 el mandato
+C 0x5ea9 a cero cierra el bloque
+C 0x5ce5 el puntero a la tabla
+C 0x5ce6 mas el indice
+C 0x5ce9 el valor
+C 0x5cea a (0xE151), el efecto
+C 0x5ced el reloj
+C 0x5cf0 el bit 6, que cambia cada 64 cuadros
+C 0x5cf2 y con el puesto, se mira la red
+C 0x5cf4 el alcance del ultimo golpe
+C 0x5cf7 el golpe corto
+C 0x5cf9 y entonces la maquina responde de otra manera
+C 0x5cfb el roce de red
+C 0x5cfe a cero
+C 0x5cff no hay golpe especial
+C 0x5e68 el destino, que hace falta luego
+C 0x5e69 el indice doblado, que la tabla es de palabras
+C 0x5e6a sumado a la tabla
+C 0x5e6d la entrada
+C 0x5e6e el byte siguiente
+C 0x5e6f y su byte alto
+C 0x5e70 a HL: el fotograma
+C 0x5e71 se recupera el destino
+C 0x5e72 la referencia
+C 0x5e73 cinco sprites como mucho
+C 0x6cfb la tabla de los cuatro guiones laterales
+C 0x6cfe (0xE14B), de que lado cayo el punto
+C 0x6d01 doblado
+C 0x6d02 y otra vez: cuatro bytes por lado
+C 0x6d03 sumado a la tabla
+C 0x6d06 el reloj
+C 0x6d09 el bit 2, que cambia dieciseis veces por segundo
+C 0x6d0b con el apagado, el primer guion del par
+C 0x6d0d y con el puesto
+C 0x6d0e el segundo: eso es lo que hace PARPADEAR la columna
+C 0x6d0f la entrada
+C 0x6d10 el byte siguiente
+C 0x6d11 y su byte alto
+C 0x5dfe el color de este sprite
+C 0x5dff a su sitio
+C 0x5e00 y se salta
+C 0x5e01 los otros
+C 0x5e02 tres bytes
+C 0x5e03 del sprite
+C 0x5e04 al color siguiente
+C 0x5e05 tantos como diga B
+C 0x5e07 hecho
+C 0x5e08 el bloque del jugador cercano
+C 0x5e0b uno
+C 0x5e0d de quien es el turno
+C 0x5e10 a cero
+C 0x5e32 el byte anterior
+C 0x5e33 la coordenada, a B
+C 0x5e34 y el de mas atras
+C 0x5e35 la otra, a C
+C 0x5e36 que se pasan al reves
+C 0x5e39 dos bytes
+C 0x5e3a adelante
+C 0x5e3b la altura
+C 0x5e3c y se proyecta a fila y columna
+C 0x5e3f 0x80, el centro
+C 0x5e41 menos la coordenada
+C 0x5e42 sin prestamo, ya esta
+C 0x5e44 y con el, se le da la vuelta al signo
+C 0x5997 la fase del punto
+C 0x599a leida
+C 0x599b la 1
+C 0x599d fuera de ella, se golpea
+C 0x599f el paso dentro de la fase
+C 0x59a0 leido
+C 0x59a1 a cero
+C 0x59a2 aun no se puede golpear
+C 0x59a4 uno: se golpea
+C 0x59a9 cero
+C 0x59b0 y se apaga el bit de correr
+C 0x6c2f el resto
+C 0x6c30 se recupera el dividendo
+C 0x6c31 con su bit de arriba
+C 0x6c33 el byte bajo
+C 0x6c34 menos el resto
+C 0x6c35 devuelto
+C 0x6c36 sin prestamo, ya esta
+C 0x6c38 y con el, baja el alto
+C 0x6ded el reloj
+C 0x6df0 el bit 2: dieciseis veces por segundo
+C 0x6df2 con el apagado, el marcador entero
+C 0x6df5 el sitio del tanteo de un lado
+C 0x6df8 de quien es el punto
+C 0x6dfb a cero
+C 0x6dfc ese
+C 0x6dfe y si no, el del otro
+C 0x6e01 cero: se borra
+C 0x6e02 los dos digitos: el tanteo del que ha ganado PARPADEA
+C 0x6e08 el guion de CHANGE COURT
+C 0x6ffa la cuenta
+C 0x6ffb multiplicados a 16 bits
+C 0x6ffe se recupera
+C 0x6fff su byte alto
+C 0x7000 mas el del producto
+C 0x7001 devuelto
+C 0x7002 sin acarreo, ya esta
+C 0x7004 y con el, sube el bajo
+C 0x7005 el byte bajo
+C 0x7006 mas el del producto
+C 0x7007 devuelto
+C 0x7008 hecho
+C 0x7009 la cuenta
+C 0x700a multiplicados
+C 0x700d y se recupera
+
+
+# ======================================================================
+# COMENTARIOS DE LINEA
+# ======================================================================
+C 0x5b5c los flancos del segundo jugador
+C 0x5b5f y su mando crudo
+C 0x5b62 se ajusta lo que se acaba de pulsar
+C 0x5b65 el modo
+C 0x5b68 el bit 5, dos jugadores
+C 0x5b6a con uno, la maquina decide hacia donde mira
+C 0x5b6d y con dos, manda la persona
+C 0x5b6e cero: la maquina no tiene mando que leer
+C 0x5c4c al byte anterior
+C 0x5c4d un bit a la izquierda: el patron de aciertos va rotando
+C 0x5c4f los bytes que haga falta
+C 0x5c51 sin acarreo, no toca
+C 0x5c52 (0xE1A8), las banderas del golpe
+C 0x5c55 y se enciende el bit 0
+C 0x5c57 hecho
+C 0x5deb los colores del jugador cercano
+C 0x5dee su tabla
+C 0x5df1 cinco sprites
+C 0x5df3 repartidos de cuatro en cuatro
+C 0x5df6 y ahora el lejano
+C 0x5df9 su tabla
+C 0x5dfc tres sprites, que se dibuja con menos
+C 0x5eb2 un byte del literal
+C 0x5eb3 y al siguiente
+C 0x5eb4 al juego alterno, donde esta el puerto
+C 0x5eb5 al VDP, sin pasar por la BIOS
+C 0x5eb7 y de vuelta
+C 0x5eb8 tantos como diga la cuenta
+C 0x5eba y a por el mandato siguiente
+C 0x5ebc la cuenta de la repeticion
+C 0x6cbc guardado
+C 0x6cbd la velocidad de subida
+C 0x6cc0 cero
+C 0x6cc1 en su byte alto
+C 0x6cc2 y el bajo
+C 0x6cc3 0xF0: la pelota sale rebotada
+C 0x6cc5 guardado
+C 0x6cc6 cero
+C 0x5abc la altura del muneco
+C 0x5abd catorce mas
+C 0x5abf el borde de arriba de la horquilla
+C 0x5ac0 y veinte menos
+C 0x5ac2 el de abajo
+C 0x5ac3 guardado tambien
+C 0x5e50 el bloque del jugador lejano
+C 0x5e53 uno
+C 0x5e55 de quien es el turno
+C 0x5e58 a cero
+C 0x5e59 no se corrige
+C 0x5e5b y si no, uno mas: al de enfrente le toca al reves
+C 0x5e5c se coloca su sombra
+C 0x5e5f su fotograma
+C 0x6701 el saque
+C 0x6704 a cero
+C 0x6705 y con saque pendiente, por el otro camino
+C 0x6707 la falta
+C 0x670a a cero
+C 0x670b y con falta, tambien
+C 0x670d el modo
+C 0x6712 con un jugador no hay cambio de campo
+C 0x6ace el byte anterior de la posicion
+C 0x6acf y el de la velocidad
+C 0x6ad0 la posicion
+C 0x6ad1 mas la velocidad
+C 0x6ad2 devuelta
+C 0x6ad3 hecho
+C 0x6ad4 las tres coordenadas de la pelota
+C 0x6ad8 la segunda
+C 0x6b26 la fila que ha salido
+C 0x6b27 se recupera lo guardado
+C 0x6b28 y la fila pasa a C
+C 0x6b29 el otro par de sprites
+C 0x6b2c y su gemelo
+C 0x6b2f colocados
+C 0x6b35 el byte alto de la cuenta
+C 0x6b39 sin acarreo, ese
+C 0x6e99 la tabla de seno, desde su principio
+C 0x6e9c mas el indice
+C 0x6e9f el valor
+C 0x6ea0 al destino
+C 0x6ea1 que avanza
+C 0x6ea2 hecho
+C 0x6ea3 la misma tabla 31 posiciones mas alla: un cuarto de onda, o sea el coseno
+C 0x6ea6 mas el indice
+C 0x6ea9 el valor
+C 0x6eaa al destino
+C 0x6eab que avanza
+C 0x6eac hecho
+C 0x70e3 el mando fingido que se lleva
+C 0x70e4 hacia donde va la pelota
+C 0x70e7 a cero
+C 0x70e8 sin bit de lado
+C 0x70ea ese
+C 0x70ec y si no, el bit 4: el otro lado
+C 0x70ee sumado a lo que ya habia
+C 0x70ef hecho

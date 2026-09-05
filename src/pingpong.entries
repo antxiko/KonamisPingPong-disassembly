@@ -1,0 +1,88 @@
+# Puntos de entrada que el trazado NO puede deducir solo.
+#
+# Cada uno lleva escrito POR QUE hace falta. Una entrada sin justificar es una
+# direccion metida a mano para que la cobertura cuadre, y eso es exactamente
+# lo que no se puede hacer sin dejar constancia.
+
+# El arranque: la cabecera del cartucho da INIT en 0x406C.
+0x406C   # INIT, la direccion que trae la cabecera del cartucho
+
+# ======================================================================
+# EL GANCHO DE LA INTERRUPCION
+# ======================================================================
+# INIT no arranca ningun bucle de juego: escribe un `jp` (0xC3) en 0xFD9A y la
+# direccion 0x4019 en 0xFD9B, que es H.KEYI, y se queda en el `jr $` de 0x409A.
+# O sea que TODO el juego cuelga de la interrupcion, una vez por cuadro.
+#
+# El cerrojo de reentrada de (0xE005) lo confirma: INIT lo pone a uno mientras
+# llama a 0x47B1 y lo apaga justo despues, para que el primer cuadro no pille
+# el arranque a medias.
+0x4019   # H.KEYI: lo engancha INIT en 0x4074 (`ld hl,04019h / ld (0fd9bh),hl`)
+
+# ======================================================================
+# LAS TABLAS PEGADAS DETRAS DEL `call`
+# ======================================================================
+# El despachador de 0x4062 es el mismo que usan los demas cartuchos de esta
+# familia de Konami:
+#
+#     add a,a / pop hl / call 0x4058 / ld e,(hl) / inc hl / ld d,(hl)
+#     ex de,hl / jp (hl)
+#
+# El `pop hl` recupera su propia direccion de retorno, que es donde empieza la
+# tabla, porque la tabla va PEGADA detras del `call`. El trazado no puede
+# deducirlas siguiendo saltos, asi que van declaradas aqui.
+#
+# Cuantas entradas tiene cada una no se estima: lo fija el encaje de que su
+# PRIMERA entrada apunte justo detras de la tabla, que es donde sigue el
+# codigo. Las dos cuadran al byte.
+#
+#   0x40C9 + 8*2  = 0x40D9, y su primera entrada es 0x40D9
+#   0x6225 + 12*2 = 0x623D, y su primera entrada es 0x623D
+!tabla 0x40c9   8   # el reparto de escenas, desde 0x40C6
+!tabla 0x6225  12   # desde 0x6222
+
+# ======================================================================
+# LA DIRECCION DE RETORNO EMPUJADA A MANO
+# ======================================================================
+# 0x40BD hace `ld hl,043a7h / push hl` y cae en el `call L_4062` de 0x40C6. O
+# sea que apila 0x43A7 como direccion de retorno de la escena: cuando la
+# escena despachada haga `ret`, se sigue por ahi. El trazado no puede seguir
+# un retorno fabricado.
+0x43A7   # lo empuja 0x40BD con `ld hl,043a7h / push hl` antes del despachador
+
+# ======================================================================
+# LAS CUATRO PUERTAS DEL INTERPRETE DE ROTULOS
+# ======================================================================
+# El interprete tiene cuatro entradas, que combinan las dos cosas que puede
+# variar: si lee la cabecera de destino del guion o le llega ya en HL, y si la
+# mascara C deja pasar los bytes (0xFF) o escribe ceros (0x00), o sea si pinta
+# el rotulo o lo BORRA reutilizando el mismo guion.
+#
+#   0x4764  ld c,0ffh  y sigue a 0x4766: cabecera SI, pinta
+#   0x476C  entra en el bucle: cabecera NO, con C y HL ya puestos
+#   0x475C  ld c,0ffh / jr 0x476C: cabecera NO, pinta
+#   0x4760  ld c,000h / jr 0x4766: cabecera SI, BORRA
+#
+# Las dos primeras las alcanza el trazado por sus `call`; a las otras dos solo
+# se llega por tabla, asi que van aqui.
+0x4760   # `ld c,000h / jr 0x4766`: la puerta que borra el rotulo
+
+# ======================================================================
+# LAS RUTINAS HERMANAS QUE NADIE LLAMA CON UN `call` VISIBLE
+# ======================================================================
+# 0x470A prepara el puerto de ESCRITURA de la VRAM: `call 0x0053` (SETWRT) y
+# se guarda en C' el puerto que la BIOS tiene en 0x0006. 0x4716 es su gemela
+# de LECTURA, byte por byte: `call 0x0050` (SETRD) y el puerto de 0x0007.
+0x4716   # la gemela de lectura de 0x470A: SETRD y el puerto de (0x0007)
+
+# 0x473B repite un bloque comprimido en los tres tercios de la pantalla
+# saltando 0x800. 0x4749 es la misma construccion llamando a 0x4720 en vez de
+# al descompresor.
+0x4749   # el mismo bucle de tres tercios que 0x473B, pero sobre 0x4720
+
+# Un `ret` suelto detras del `jp L_59B0` de 0x5B83: se llega por salto.
+0x5B86   # `ret` al que solo se entra saltando
+
+# 0x6586 es un `jr $+9` que se salta estos tres bytes, asi que a 0x6588 solo
+# se llega por otro camino.
+0x6588   # `ld (0e004h),a`, saltado por el `jr $+9` de 0x6586

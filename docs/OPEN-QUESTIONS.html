@@ -1,0 +1,104 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Open questions — Konami&#x27;s Ping Pong (Konami, 1985)</title>
+<style>
+:root{--tinta:#cfd0d4;--suave:#83868f;--fondo:#000;--panel:#0c0e13;--linea:#23262e;
+  --rojo:#ff897d;--cyan:#65dbef;--verde:#3eb849;--oro:#ded087}
+@media (prefers-color-scheme:light){:root{--tinta:#191a1e;--suave:#5a5d66;--fondo:#e9e7e1;
+  --panel:#f7f6f2;--linea:#d0cdc5;--rojo:#b23f34;--cyan:#1c6b7c;--verde:#2b7734;--oro:#8a7420}}
+:root[data-theme="dark"]{--tinta:#cfd0d4;--suave:#83868f;--fondo:#000;--panel:#0c0e13;
+  --linea:#23262e;--rojo:#ff897d;--cyan:#65dbef;--verde:#3eb849;--oro:#ded087}
+:root[data-theme="light"]{--tinta:#191a1e;--suave:#5a5d66;--fondo:#e9e7e1;--panel:#f7f6f2;
+  --linea:#d0cdc5;--rojo:#b23f34;--cyan:#1c6b7c;--verde:#2b7734;--oro:#8a7420}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--tinta);padding:0 1.25rem 6rem;
+  font:15px/1.7 ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+.w{max-width:1120px;margin:0 auto}
+.n{max-width:68ch}
+h1,h2,h3,h4{font-weight:400;text-wrap:balance}
+a{color:var(--cyan)}
+img{image-rendering:pixelated;max-width:100%;height:auto;display:block}
+header.top{display:flex;flex-direction:column;align-items:center;gap:1.5rem;
+  padding:4rem 0 2rem;text-align:center}
+header.top img{width:min(100%,642px)}
+.claim{max-width:60ch;color:var(--suave);font-size:1.05rem}
+.claim b{color:var(--tinta);font-weight:400}
+.ficha{display:flex;flex-wrap:wrap;justify-content:center;gap:0 1.5rem;width:100%;
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--suave);
+  border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);padding:.85rem 0}
+.ficha b{color:var(--rojo);font-weight:400}
+nav{display:flex;flex-wrap:wrap;gap:1.25rem;justify-content:center;padding:1.25rem 0;
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+nav a{color:var(--suave);text-decoration:none;border-bottom:1px solid transparent}
+nav a:hover,nav a:focus{color:var(--tinta);border-bottom-color:var(--rojo)}
+nav.docs{border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);
+  margin-bottom:1rem}
+section{margin-top:4.5rem;scroll-margin-top:1rem}
+section>h2{font-size:1rem;letter-spacing:.1em;text-transform:uppercase;
+  border-left:3px solid var(--rojo);padding-left:.9rem;margin:0 0 1.5rem}
+.cifras{display:grid;gap:1px;background:var(--linea);border:1px solid var(--linea);
+  grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.cifra{background:var(--panel);padding:1.1rem}
+.cifra b{display:block;font-size:1.7rem;color:var(--oro);font-weight:400;
+  font-variant-numeric:tabular-nums;line-height:1.2}
+.cifra span{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--suave)}
+.hall{border-top:1px solid var(--linea);padding-top:1.75rem;margin-top:2.5rem}
+.hall:first-of-type{border-top:0;padding-top:0;margin-top:0}
+.hall h3{margin:0 0 .75rem;font-size:1.15rem;color:var(--rojo)}
+.hall h4{color:var(--oro);margin:1.5rem 0 .5rem;font-size:.95rem}
+.hall p{margin:0 0 1rem}
+pre.asm{background:var(--panel);border-left:2px solid var(--verde);margin:1.25rem 0;
+  padding:1rem 1.1rem;overflow-x:auto;font-size:13px;line-height:1.6;color:var(--tinta)}
+.par{display:grid;gap:1.25rem;grid-template-columns:1fr}
+@media(min-width:820px){.par{grid-template-columns:1fr 1fr}}
+.par figure{margin:0}
+table{border-collapse:collapse;width:100%;margin:1.25rem 0;font-size:13px;display:block;
+  overflow-x:auto}
+th,td{text-align:left;padding:.5rem .75rem;border-bottom:1px solid var(--linea)}
+th{color:var(--suave);font-weight:400;font-size:11px;letter-spacing:.07em;text-transform:uppercase}
+td.num{font-variant-numeric:tabular-nums;color:var(--oro)}
+.nivel{margin-top:2rem}
+.nivel h3{margin:0 0 .9rem;font-size:.95rem;letter-spacing:.06em;text-transform:uppercase}
+.nivel em{color:var(--cyan);font-style:normal}
+.sep{color:var(--suave);margin:0 .6rem}
+.rejilla{display:grid;gap:.9rem;grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.rejilla figure{margin:0;background:var(--panel);box-shadow:0 0 0 1px var(--linea)}
+.rejilla figcaption{display:flex;justify-content:space-between;padding:.45rem .65rem;
+  font-size:11px;color:var(--suave);border-top:1px solid var(--linea)}
+.dir{font-variant-numeric:tabular-nums;color:var(--verde)}
+footer{margin-top:5rem;padding-top:1.5rem;border-top:1px solid var(--linea);
+  color:var(--suave);font-size:12px}
+
+/* Aviso de trabajo en curso: tiene que verse antes que las cifras, porque un
+   100% mal leido hace mas dano que no ponerlo. */
+.aviso{background:#3a2a10;border-left:3px solid var(--oro);margin:1.5rem auto;
+  padding:1rem 1.2rem;max-width:900px;border-radius:4px}
+.aviso p{margin:0;color:var(--tinta);font-size:15px;line-height:1.65}
+.galeria{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:1.5rem;margin:1.5rem 0}
+.galeria figure{margin:0}
+.galeria img{width:100%;height:auto;image-rendering:pixelated;
+  border:1px solid var(--linea);border-radius:3px}
+.galeria figcaption{color:var(--suave);font-size:13px;margin-top:.5rem}
+audio{display:block;width:100%;max-width:640px;margin:.75rem 0 1.5rem}
+</style>
+<div class="w"><nav class="top"><a href="index.html">Home</a><a href="GETTING-STARTED.html">Start</a><a href="THE-GAME.html">The game</a><a href="THE-CARTRIDGE.html">The cartridge</a><a href="THE-CODE.html">The code</a><a href="FINDINGS.html">Findings</a><a href="IN-THE-EMULATOR.html">In the emulator</a><a href="OPEN-QUESTIONS.html" style=color:var(--tinta)>Open questions</a><a href="es/PREGUNTAS-ABIERTAS.html" style="margin-left:auto;color:var(--oro)">Castellano</a></nav>
+<h1 id="open-questions">Open questions</h1>
+<p>Every byte of the cartridge is accounted for and every routine carries a comment, but that does not mean everything is understood. What is still open, without dressing it up:</p>
+<h2 id="blocks-whose-limits-are-measured-and-whose-use-is-not">Blocks whose limits are measured and whose use is not</h2>
+<p>For these we know <b>who loads them and where they end</b> -from the loader and from where the next block starts- but not what each byte is for:</p>
+<table><tr><th>block</th><th>bytes</th><th>who loads it</th></tr><tr><td>0x4B7A</td><td>13</td><td>0x4B6E, which copies them into the sprite buffer</td></tr><tr><td>0x4B87</td><td>8</td><td>0x419B, and they are the small &quot;KONAMI&quot; on the title</td></tr><tr><td>0x5886</td><td>40</td><td>0x5849, eight bytes from 0x5886 plus <b>three times</b> the level</td></tr><tr><td>0x5C58..0x5C6D</td><td>21</td><td>four different loaders, all in the machine&#x27;s play</td></tr><tr><td>0x6A9C / 0x6AA8</td><td>12 and 12</td><td>0x6A85 and 0x6A53, the force and reach of a shot</td></tr></table>
+<p>The 0x5886 one is the oddest: the stretches <b>overlap</b>, because the index advances by three and eight bytes are copied. That is measured, but whether the overlap is deliberate or there are simply spare bytes has not been settled.</p>
+<h2 id="the-three-blocks-at-0x4d0a">The three blocks at 0x4D0A</h2>
+<p>0x4CF6 copies 21 bytes to 0xE07C from three starts -0x4D0A, 0x4D1B and 0x4D2C- that are <b>17 bytes</b> apart. So each copy takes four bytes of the next one. They are declared that way, with the overlap stated, but whether anyone reads those four extra bytes is not known.</p>
+<h2 id="what-exactly-separates-the-five-levels">What exactly separates the five levels</h2>
+<p>The level is known to come in at three places: the trajectory table at 0x5D37 -five levels by six zones-, the points threshold at 0x5C5E and the easiest level&#x27;s latch. What has <b>not</b> been measured is how much each of the three shows in an actual match, or which weighs most.</p>
+<h2 id="the-other-table-of-twelve">The other table of twelve</h2>
+<p>The table at 0x6225 has twelve entries and matches to the byte by the first-entry fit, just like the scene one. It dispatches the phases of a rally. But the twelve have not been walked one by one in the emulator to see which comes up when: what there is, is the reading of the code.</p>
+<h2 id="the-four-side-scripts">The four side scripts</h2>
+<p>0x6D15 points at four scripts that draw two vertical columns at the sides of the table, on a diagonal. What they paint and who picks them is known -bit 2 of the frame clock, so they <b>flicker</b>- but not what they represent: the crowd, the net seen edge-on, or the edge of the room.</p>
+<h2 id="what-is-settled-and-might-look-open">What is settled and might look open</h2>
+<ul><li><b>VRAM being the other way round</b> is not a quirk of this cartridge: the eight register bytes are identical to Road Fighter&#x27;s, whose whole skeleton this one shares. Checked, not assumed.</li><li><b>The two writes into ROM</b> at 0x4013 and 0x4052 do nothing, and it is not that they are not understood: ROM cannot be written, and that is that.</li><li><b>The one byte that does not match</b> on the title screen against the emulator is a problem of when the dump was taken, not of the format.</li></ul>
+<h2 id="if-you-know-something">If you know something</h2>
+<p>If you know the answer to any of these -or find an error in what is published- it would be welcome: the point of this series is that the listing can be believed, and for that it has to be correctable.</p>
+<footer><p><em>Konami's Ping Pong</em> was published by Konami for the MSX in 1985; its catalogue number is RC-731 and it is 16 KB. All rights in the game remain with their holders. This is preservation, study and documentation work, and the cartridge image is not distributed.</p></footer></div>

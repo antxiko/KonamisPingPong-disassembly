@@ -1,0 +1,142 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>El código — Konami&#x27;s Ping Pong (Konami, 1985)</title>
+<style>
+:root{--tinta:#cfd0d4;--suave:#83868f;--fondo:#000;--panel:#0c0e13;--linea:#23262e;
+  --rojo:#ff897d;--cyan:#65dbef;--verde:#3eb849;--oro:#ded087}
+@media (prefers-color-scheme:light){:root{--tinta:#191a1e;--suave:#5a5d66;--fondo:#e9e7e1;
+  --panel:#f7f6f2;--linea:#d0cdc5;--rojo:#b23f34;--cyan:#1c6b7c;--verde:#2b7734;--oro:#8a7420}}
+:root[data-theme="dark"]{--tinta:#cfd0d4;--suave:#83868f;--fondo:#000;--panel:#0c0e13;
+  --linea:#23262e;--rojo:#ff897d;--cyan:#65dbef;--verde:#3eb849;--oro:#ded087}
+:root[data-theme="light"]{--tinta:#191a1e;--suave:#5a5d66;--fondo:#e9e7e1;--panel:#f7f6f2;
+  --linea:#d0cdc5;--rojo:#b23f34;--cyan:#1c6b7c;--verde:#2b7734;--oro:#8a7420}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--tinta);padding:0 1.25rem 6rem;
+  font:15px/1.7 ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+.w{max-width:1120px;margin:0 auto}
+.n{max-width:68ch}
+h1,h2,h3,h4{font-weight:400;text-wrap:balance}
+a{color:var(--cyan)}
+img{image-rendering:pixelated;max-width:100%;height:auto;display:block}
+header.top{display:flex;flex-direction:column;align-items:center;gap:1.5rem;
+  padding:4rem 0 2rem;text-align:center}
+header.top img{width:min(100%,642px)}
+.claim{max-width:60ch;color:var(--suave);font-size:1.05rem}
+.claim b{color:var(--tinta);font-weight:400}
+.ficha{display:flex;flex-wrap:wrap;justify-content:center;gap:0 1.5rem;width:100%;
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--suave);
+  border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);padding:.85rem 0}
+.ficha b{color:var(--rojo);font-weight:400}
+nav{display:flex;flex-wrap:wrap;gap:1.25rem;justify-content:center;padding:1.25rem 0;
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+nav a{color:var(--suave);text-decoration:none;border-bottom:1px solid transparent}
+nav a:hover,nav a:focus{color:var(--tinta);border-bottom-color:var(--rojo)}
+nav.docs{border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);
+  margin-bottom:1rem}
+section{margin-top:4.5rem;scroll-margin-top:1rem}
+section>h2{font-size:1rem;letter-spacing:.1em;text-transform:uppercase;
+  border-left:3px solid var(--rojo);padding-left:.9rem;margin:0 0 1.5rem}
+.cifras{display:grid;gap:1px;background:var(--linea);border:1px solid var(--linea);
+  grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.cifra{background:var(--panel);padding:1.1rem}
+.cifra b{display:block;font-size:1.7rem;color:var(--oro);font-weight:400;
+  font-variant-numeric:tabular-nums;line-height:1.2}
+.cifra span{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--suave)}
+.hall{border-top:1px solid var(--linea);padding-top:1.75rem;margin-top:2.5rem}
+.hall:first-of-type{border-top:0;padding-top:0;margin-top:0}
+.hall h3{margin:0 0 .75rem;font-size:1.15rem;color:var(--rojo)}
+.hall h4{color:var(--oro);margin:1.5rem 0 .5rem;font-size:.95rem}
+.hall p{margin:0 0 1rem}
+pre.asm{background:var(--panel);border-left:2px solid var(--verde);margin:1.25rem 0;
+  padding:1rem 1.1rem;overflow-x:auto;font-size:13px;line-height:1.6;color:var(--tinta)}
+.par{display:grid;gap:1.25rem;grid-template-columns:1fr}
+@media(min-width:820px){.par{grid-template-columns:1fr 1fr}}
+.par figure{margin:0}
+table{border-collapse:collapse;width:100%;margin:1.25rem 0;font-size:13px;display:block;
+  overflow-x:auto}
+th,td{text-align:left;padding:.5rem .75rem;border-bottom:1px solid var(--linea)}
+th{color:var(--suave);font-weight:400;font-size:11px;letter-spacing:.07em;text-transform:uppercase}
+td.num{font-variant-numeric:tabular-nums;color:var(--oro)}
+.nivel{margin-top:2rem}
+.nivel h3{margin:0 0 .9rem;font-size:.95rem;letter-spacing:.06em;text-transform:uppercase}
+.nivel em{color:var(--cyan);font-style:normal}
+.sep{color:var(--suave);margin:0 .6rem}
+.rejilla{display:grid;gap:.9rem;grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.rejilla figure{margin:0;background:var(--panel);box-shadow:0 0 0 1px var(--linea)}
+.rejilla figcaption{display:flex;justify-content:space-between;padding:.45rem .65rem;
+  font-size:11px;color:var(--suave);border-top:1px solid var(--linea)}
+.dir{font-variant-numeric:tabular-nums;color:var(--verde)}
+footer{margin-top:5rem;padding-top:1.5rem;border-top:1px solid var(--linea);
+  color:var(--suave);font-size:12px}
+
+/* Aviso de trabajo en curso: tiene que verse antes que las cifras, porque un
+   100% mal leido hace mas dano que no ponerlo. */
+.aviso{background:#3a2a10;border-left:3px solid var(--oro);margin:1.5rem auto;
+  padding:1rem 1.2rem;max-width:900px;border-radius:4px}
+.aviso p{margin:0;color:var(--tinta);font-size:15px;line-height:1.65}
+.galeria{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:1.5rem;margin:1.5rem 0}
+.galeria figure{margin:0}
+.galeria img{width:100%;height:auto;image-rendering:pixelated;
+  border:1px solid var(--linea);border-radius:3px}
+.galeria figcaption{color:var(--suave);font-size:13px;margin-top:.5rem}
+audio{display:block;width:100%;max-width:640px;margin:.75rem 0 1.5rem}
+</style>
+<div class="w"><nav class="top"><a href="index.html">Portada</a><a href="EMPEZAR.html">Empezar</a><a href="EL-JUEGO.html">El juego</a><a href="EL-CARTUCHO.html">El cartucho</a><a href="EL-CODIGO.html" style=color:var(--tinta)>El código</a><a href="HALLAZGOS.html">Hallazgos</a><a href="EN-EL-EMULADOR.html">En el emulador</a><a href="PREGUNTAS-ABIERTAS.html">Preguntas abiertas</a><a href="../THE-CODE.html" style="margin-left:auto;color:var(--oro)">English</a></nav>
+<h1 id="el-codigo">El código</h1>
+<h2 id="un-cuadro-entero">Un cuadro entero</h2>
+<p>Todo cuelga de H.KEYI, así que el programa es lo que cabe entre dos interrupciones. El latido de 0x4019 hace siempre lo mismo:</p>
+<pre><code>call RDVDP              acepta la interrupcion
+di / call 0x5195 / ei   el sonido, que no puede perder un cuadro
+bit 0,(0xE005)          el cerrojo de reentrada
+  inc (hl)              se echa
+  call 0x46AC           mira si toca cambiar de campo
+  call 0x47E3           lee los mandos
+  call 0x409F           corre la escena que toque
+  ld (0xE005),0         y se suelta
+call RDVDP / call m,0x5195   una pasada mas de sonido</code></pre>
+<p>El cerrojo importa: si un cuadro tarda más de lo que dura un cuadro, el siguiente se salta entero en vez de entrar a medias.</p>
+<h2 id="el-despacho-en-dos-niveles">El despacho, en dos niveles</h2>
+<p><b>La escena</b> la reparte 0x4062, que es el despachador de esta familia de cartuchos de Konami:</p>
+<pre><code>add a,a / pop hl / call 0x4058 / ld e,(hl) / inc hl / ld d,(hl)
+ex de,hl / jp (hl)</code></pre>
+<p>El <code>pop hl</code> recupera su propia dirección de retorno, y ésa <b>es</b> la tabla: va pegada detrás del <code>call</code>. Cuántas entradas tiene no se estima, lo fija el encaje de que su primera entrada apunte justo detrás de la tabla. Las dos que hay cuadran al byte:</p>
+<pre><code>0x40C9 + 8*2  = 0x40D9, y su primera entrada es 0x40D9
+0x6225 + 12*2 = 0x623D, y su primera entrada es 0x623D</code></pre>
+<p><b>La subescena</b> no gasta tabla. Se elige bajando por una cadena de <code>djnz</code>:</p>
+<pre><code>L_40D9: djnz L_40EE      &lt;- subescena 0
+        ...
+L_40EE: djnz L_40FA      &lt;- subescena 1
+        ...</code></pre>
+<p>Cada escalón son dos bytes, y el trozo que se ejecuta es aquel en que B llega a cero. Veinticinco escalones en cincuenta bytes, sin comparaciones y sin tabla.</p>
+<p>Para pasar de un escalón al siguiente hay dos remates que se repiten por todo el listado: 0x4260 sube (0xE001), y 0x425D además deja A cuadros de espera en (0xE004).</p>
+<h2 id="los-interpretes">Los intérpretes</h2>
+<p>El cartucho lleva tres, y los tres leen un guion de la ROM.</p>
+<h3 id="los-rotulos-y-sus-cuatro-puertas">Los rótulos, y sus cuatro puertas</h3>
+<p>El formato es <code>[destino en VRAM, word] [índices de patrón...]</code>, con 0xFE para saltar a otro destino y 0xFF para terminar. El índice de patrón es el código ASCII menos 0x20, así que la fuente está ordenada como el ASCII a partir del espacio.</p>
+<p>Lo bonito es que el mismo bucle sirve para cuatro cosas, según se entre por una puerta o por otra:</p>
+<table><tr><th>entrada</th><th>cabecera</th><th>máscara</th></tr><tr><td>0x4764</td><td>la lee del guion</td><td>0xFF, pinta</td></tr><tr><td>0x476C</td><td>ya viene en HL</td><td>la que traiga</td></tr><tr><td>0x475C</td><td>ya viene en HL</td><td>0xFF, pinta</td></tr><tr><td>0x4760</td><td>la lee del guion</td><td><b>0x00, borra</b></td></tr></table>
+<p>La cuarta es la buena: con la máscara a cero el <code>and c</code> deja el byte en cero, así que <b>el mismo guion que escribió el rótulo lo borra</b>.</p>
+<h3 id="el-descompresor">El descompresor</h3>
+<pre><code>0x00           cierra el bloque
+0x01..0x7F     el byte que sigue, repetido esa cuenta
+0x80           destino de VRAM nuevo (dos bytes)
+0x81..0xFF     literal de (mandato &amp; 0x7F) bytes</code></pre>
+<p>Escribe al puerto del VDP con un <code>out (c),a</code> por byte, con el puerto guardado en C&#x27; para no tocar los registros de quien llama.</p>
+<p>Y encima hay dos bucles que lo repiten: 0x4735 con B=2 y 0x4739 con B=3, subiendo el destino 0x800 en cada vuelta. El <code>push de</code> / <code>pop de</code> devuelve DE al principio del bloque, así que <b>es el mismo bloque el que se pinta en los tres tercios</b> de SCREEN 2.</p>
+<h3 id="el-segundo-descompresor">El segundo descompresor</h3>
+<p>0x5E9B tiene los mismos mandatos menos el 0x80 -no puede cambiar de destino a media faena- y, sobre todo, <b>no recibe el bloque en DE</b>: lo saca de un puntero. Eso es lo que enlaza cada fotograma con sus patrones, y está contado en <a href="HALLAZGOS.html">Hallazgos</a>.</p>
+<h2 id="el-sonido">El sonido</h2>
+<p>Tres canales de quince bytes cada uno desde 0xE010. Una melodía puede ocupar uno, dos o tres, y el número de melodía hace de <b>prioridad</b>: 0x5121 compara los seis bits bajos de la que suena con los de la nueva y no la pisa si es menor.</p>
+<p>El guion de melodía se lee por nibbles:</p>
+<table><tr><th>mandato</th><th>qué hace</th></tr><tr><td>0x20 pelado</td><td>envolvente: escribe los registros 11, 12 y 13</td></tr><tr><td>0x2x</td><td>duración</td></tr><tr><td>0x1x</td><td>ruido: periodo al registro 6 y paso abierto en el mezclador</td></tr><tr><td>0xDx</td><td>multiplicador de duración</td></tr><tr><td>0xEx</td><td>octava</td></tr><tr><td>0xFx</td><td>volumen de arranque</td></tr><tr><td>0xFE / 0xFF</td><td>cierran</td></tr><tr><td>resto</td><td>nota: el nibble alto es la nota, del 0 al 12</td></tr></table>
+<p>La nota se convierte en periodo con la tabla de doce semitonos de 0x532D, y la octava se aplica <b>duplicando</b> el periodo tantas veces como diga (ix+5). Que son doce semitonos temperados no es una suposición: la razón entre notas consecutivas sale entre 1,050 y 1,071, contra el 1,0595 de la duodécima raíz de dos.</p>
+<p>El 12 no es una nota: es el silencio.</p>
+<h2 id="la-aritmetica">La aritmética</h2>
+<p>El Z80 no multiplica ni divide, así que el cartucho lo hace a mano:</p>
+<ul><li><b>0x6F65</b> multiplica 8x8 sumando y desplazando ocho veces</li><li><b>0x6F71</b> lo aplica a las dos mitades para 16x8</li><li><b>0x6F88</b> divide restando y desplazando dieciséis</li></ul>
+<p>Con esas tres y tres factores fijos, 0x6BA1 proyecta las tres coordenadas de la mesa en fila y columna de pantalla.</p>
+<h2 id="como-se-lee-un-mando">Cómo se lee un mando</h2>
+<p>El joystick se lee por el PSG -0x8F al registro 15 para elegir el puerto, el 14 para leer- y el teclado con SNSMAT. Lo bueno es que 0x4812 <b>arma con las teclas el mismo mapa de bits que da el joystick</b>, colocando cada fila en su sitio a base de <code>rrca</code>. A partir de ahí el resto del juego no distingue uno de otro.</p>
+<p>Y 0x47F9 es el filtro que convierte el estado en pulsaciones nuevas: guarda lo de ahora, hace XOR con lo de antes y AND con lo de ahora. Lo que queda son los flancos de subida, y van un byte por debajo del estado crudo.</p>
+<footer><p><em>Konami's Ping Pong</em> lo publico Konami para MSX en 1985; su numero de catalogo es RC-731 y son 16 KB. Todos los derechos sobre el juego siguen siendo de sus titulares. Este trabajo es de preservacion, estudio y documentacion, y la imagen del cartucho no se distribuye.</p></footer></div>
