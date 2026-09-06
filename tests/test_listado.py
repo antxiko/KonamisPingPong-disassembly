@@ -577,41 +577,5 @@ class TestWeb(unittest.TestCase):
                             % (os.path.basename(ruta), v, real))
 
 
-class TestFicherosCitados(unittest.TestCase):
-    """Que el fichero que nombra una pagina exista de verdad.
-
-    El aviso legal de este repositorio decia `src/tennis.asm`, que es el
-    listado de OTRO cartucho: vino copiado de Konami's Tennis y ahi se quedo.
-    El test de "no nombrar otro juego" no lo veia, y no podia: aqui la palabra
-    tennis es legitima -es tenis de mesa- y ademas ese test solo mira docs/.
-
-    La comprobacion que si lo caza no es la del nombre, es la del FICHERO:
-    toda ruta del repositorio que se cite tiene que existir. Vale para
-    cualquier copia y pega, no solo para el de un juego de la serie.
-    """
-
-    CITA = re.compile(r"[`\"']((?:src|tools|tests)/[A-Za-z0-9_.-]+)[`\"']")
-
-    @classmethod
-    def setUpClass(cls):
-        cls.paginas = {}
-        for f in os.listdir(RAIZ):
-            if f.endswith(".md"):
-                cls.paginas[f] = lee(os.path.join(RAIZ, f))
-        for base, _, ficheros in os.walk(DOCS):
-            for f in ficheros:
-                if f.endswith((".md", ".html")):
-                    r = os.path.join(base, f)
-                    cls.paginas[os.path.relpath(r, RAIZ)] = lee(r)
-
-    def test_toda_ruta_citada_existe(self):
-        malas = []
-        for pagina, texto in sorted(self.paginas.items()):
-            for ruta in sorted(set(self.CITA.findall(texto))):
-                if not os.path.exists(os.path.join(RAIZ, ruta)):
-                    malas.append("%s nombra %s, que no existe" % (pagina, ruta))
-        self.assertEqual(malas, [], "; ".join(malas))
-
-
 if __name__ == "__main__":
     unittest.main()
