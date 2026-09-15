@@ -354,7 +354,7 @@ C 0x4045 segunda lectura del estado del VDP
 C 0x4048 el bit 7 es el aviso de interrupcion
 C 0x404a si estaba puesto, otra pasada de sonido
 L 0x404f pone_registro_del_vdp  escribe un registro del VDP, y de paso borra su copia
-C 0x4052 0x40F8 cae dentro de la propia ROM, o sea que esta escritura no llega a ninguna parte
+C 0x4052 LA OTRA PROTECCION ANTICOPIA: el cero cae en 0x40F8, que no es un dato sino el operando del `jp` de 0x40F7. Desde ROM no llega; en RAM ese salto se queda en `jp 00000h`, o sea un reinicio en seco. Es VRAM_writeAC en el desensamblado del RC-727 que hizo Manuel Pazos
 C 0x4055 WRTVDP con lo que traiga BC
 B 0x4058 ===== Las dos sumas de 8 sobre 16 bits =====
 L 0x4058 suma_a_hl  HL = HL + A, con el acarreo a mano
@@ -1413,8 +1413,8 @@ C 0x6cac (0xE14C) queda a uno si el bote cayo donde no debia: la falta
 # ======================================================================
 # COMENTARIOS DE LINEA
 # ======================================================================
-C 0x4010 lee un byte de la propia ROM
-C 0x4013 y lo escribe en otra direccion de la propia ROM, que no admite escritura: no llega a ninguna parte
+C 0x4010 lee el 0xC9 de 0x404E, que es un `ret`: la trampa se sirve de un opcode que ya estaba en la ROM
+C 0x4013 PROTECCION ANTICOPIA: ese `ret` va encima del `djnz` de 0x40EE, el primer eslabon de la cadena de la presentacion. Desde ROM la escritura NO llega -la ROM no admite escritura- y por eso parece codigo muerto; en una copia cargada en RAM si cuela y la cadena se corta ahi. Manuel Pazos la identifico en el RC-727, donde esta escrita byte a byte, como ReadKeys_AC
 C 0x4016 y sigue con los patrones del rotulo
 C 0x401c a partir de aqui, la interrupcion cerrada
 C 0x4025 con el cerrojo echado se salta el cuadro entero
@@ -1426,7 +1426,7 @@ C 0x4040 cero en A
 C 0x4049 la lectura del estado se hace con la interrupcion cerrada
 C 0x404d y se vuelve a abrir
 C 0x404e fin del cuadro
-C 0x404f HL a cero
+C 0x404f HL a cero: es lo que va a escribir la linea siguiente
 C 0x4058 A mas el byte bajo
 C 0x4059 que vuelve a HL
 C 0x405c y ya esta

@@ -23,6 +23,27 @@ You can see it in the pattern sheet:
 
 Where the first third reads **KONAMI**, the mirror reads **IMANOK**.
 
+## The cartridge defends itself: copy protection
+
+Two instructions in the start-up write inside the cartridge itself:
+
+- **0x4013** puts a `pop hl` and a `ret` over the `djnz` at 0x40EE.
+  The `0xC9` it writes is a `ret`, and it does not invent that either: it
+  reads it from somewhere else in its own ROM.
+- **0x4052** leaves a zero at 0x40F8, which is not data: it is the operand of
+  the `jp` at 0x40F7. In memory that turns it into `jp 00000h`, a dead reset.
+
+**Neither of them does anything here.** The cartridge runs from ROM, and ROM takes no
+writes: that is why they look like dead code. They are not. A pirated cartridge is a
+copy loaded into **RAM**, and there the write does land and breaks the game.
+Doing nothing on the original is exactly the point.
+
+This is no one-off idea in this cartridge: the same pair —a write over a `djnz`
+and another over the operand of a `jp`— turns up in ten cartridges of this
+series, always in the same two start-up routines. **Manuel Pazos** identified
+them in his disassembly of RC-727, where he named them `ReadKeys_AC` and
+`VRAM_writeAC`.
+
 ## Every frame carries the pointer to its patterns right behind it
 
 The second decompressor, 0x5E9B, starts like this:

@@ -30,8 +30,8 @@ DATA_cabecera_del_cartucho:
 
 
 L_4010:
-	ld a,(l404eh)		;4010   ; lee un byte de la propia ROM
-	ld (040eeh),a		;4013   ; y lo escribe en otra direccion de la propia ROM, que no admite escritura: no llega a ninguna parte
+	ld a,(l404eh)		;4010   ; lee el 0xC9 de 0x404E, que es un `ret`: la trampa se sirve de un opcode que ya estaba en la ROM
+	ld (040eeh),a		;4013   ; PROTECCION ANTICOPIA: ese `ret` va encima del `djnz` de 0x40EE, el primer eslabon de la cadena de la presentacion. Desde ROM la escritura NO llega -la ROM no admite escritura- y por eso parece codigo muerto; en una copia cargada en RAM si cuela y la cadena se corta ahi. Manuel Pazos la identifico en el RC-727, donde esta escrita byte a byte, como ReadKeys_AC
 	jp carga_los_patrones_del_titulo		;4016   ; y sigue con los patrones del rotulo
 
 ; ----------------------------------------------------------------------
@@ -66,8 +66,8 @@ L_4045:
 L_404E:
 	ret			;404e   ; fin del cuadro
 pone_registro_del_vdp:		; escribe un registro del VDP, y de paso borra su copia
-	ld hl,00000h		;404f   ; HL a cero
-	ld (040f8h),hl		;4052   ; 0x40F8 cae dentro de la propia ROM, o sea que esta escritura no llega a ninguna parte
+	ld hl,00000h		;404f   ; HL a cero: es lo que va a escribir la linea siguiente
+	ld (040f8h),hl		;4052   ; LA OTRA PROTECCION ANTICOPIA: el cero cae en 0x40F8, que no es un dato sino el operando del `jp` de 0x40F7. Desde ROM no llega; en RAM ese salto se queda en `jp 00000h`, o sea un reinicio en seco. Es VRAM_writeAC en el desensamblado del RC-727 que hizo Manuel Pazos
 	jp 00047h		;4055   ; BIOS WRTVDP - Writes data in the VDP-register | WRTVDP con lo que traiga BC
 
 ; ----------------------------------------------------------------------
