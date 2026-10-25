@@ -145,3 +145,30 @@ otro.
 Y 0x47F9 es el filtro que convierte el estado en pulsaciones nuevas: guarda lo
 de ahora, hace XOR con lo de antes y AND con lo de ahora. Lo que queda son los
 flancos de subida, y van un byte por debajo del estado crudo.
+
+## Código compartido con otros cartuchos de Konami
+
+Este desensamblado se ha comparado, instrucción por instrucción, con
+todos los demás de Konami de la serie. Cuenta un bloque cuando las
+mismas instrucciones, al menos seis desde una etiqueta hasta su `ret`
+o su salto sin condición, están en los dos cartuchos; las direcciones
+no se miran, porque cambian de un cartucho a otro. De los otros 57,
+**54** tienen al menos un bloque en común con este; estos son los
+que más comparten:
+
+| Cartucho | Bloques | Instrucciones | Por ejemplo (aquí = allí) |
+|---|---:|---:|---|
+| [Yie Ar Kung-Fu II](https://antxiko.github.io/YieArKungFu2-disassembly/es/) | 25 | 284 | `lee_teclado_1` (0x4812) = `lee_las_filas_7_y_8_del_teclado` |
+| [The Goonies](https://antxiko.github.io/Goonies-disassembly/es/) | 22 | 235 | `descomprime` (0x477B) = `guion_rle` |
+| [Road Fighter](https://antxiko.github.io/RoadFighter-disassembly/es/) | 22 | 258 | `descomprime` (0x477B) = `descomprime_con_destino_dentro` |
+| [Hyper Sports 3](https://antxiko.github.io/HyperSports3-disassembly/es/) | 21 | 243 | `lee_teclado_1` (0x4812) = `teclado_del_jugador_1` |
+| [Knightmare](https://antxiko.github.io/Knightmare-disassembly/es/) | 20 | 209 | `pinta_rotulo` (0x4764) = `pinta_texto` |
+| [Konami’s Soccer](https://antxiko.github.io/KonamisSoccer-disassembly/es/) | 20 | 221 | `pinta_rotulo` (0x4764) = `escribe_un_rotulo` |
+| [Konami's Boxing](https://antxiko.github.io/Boxing-disassembly/es/) | 19 | 202 | `pinta_rotulo` (0x4764) = `pinta_texto` |
+| [Q*bert](https://antxiko.github.io/Qbert-disassembly/es/) | 18 | 181 | `descomprime` (0x477B) = `guion_rle` |
+| [Yie Ar Kung-Fu](https://antxiko.github.io/YieArKungFu-disassembly/es/) | 17 | 185 | `lee_teclado_1` (0x4812) = `lee_el_teclado` |
+| [Nemesis / Gradius](https://antxiko.github.io/Nemesis-disassembly/es/) | 16 | 170 | `descomprime` (0x477B) = `descomprime_con_destino` |
+
+La matriz entera, los 58 cartuchos entre sí, está en
+[Las rutinas](https://antxiko.github.io/MSX-disassembly-database/es/LAS-RUTINAS.html) de la base de datos de la
+serie, con el método y el programa que la mide.

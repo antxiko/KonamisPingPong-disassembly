@@ -144,3 +144,30 @@ the other.
 And 0x47F9 is the filter that turns state into fresh presses: it stores what is
 current, XORs it with what was there and ANDs with what is current. What is
 left are the rising edges, and they go one byte below the raw state.
+
+## Code shared with other Konami cartridges
+
+This disassembly has been compared, instruction by instruction, with
+every other Konami one in the series. A block counts when the same
+instructions, at least six of them from a label to its `ret` or its
+unconditional jump, are in both cartridges; the addresses are left
+aside, because they change from one cartridge to the next. Of the
+other 57, **54** have at least one block in common with this one;
+these are the ones that share the most:
+
+| Cartridge | Blocks | Instructions | For example (here = there) |
+|---|---:|---:|---|
+| [Yie Ar Kung-Fu II](https://antxiko.github.io/YieArKungFu2-disassembly/) | 25 | 284 | `lee_teclado_1` (0x4812) = `lee_las_filas_7_y_8_del_teclado` |
+| [The Goonies](https://antxiko.github.io/Goonies-disassembly/) | 22 | 235 | `descomprime` (0x477B) = `guion_rle` |
+| [Road Fighter](https://antxiko.github.io/RoadFighter-disassembly/) | 22 | 258 | `descomprime` (0x477B) = `descomprime_con_destino_dentro` |
+| [Hyper Sports 3](https://antxiko.github.io/HyperSports3-disassembly/) | 21 | 243 | `lee_teclado_1` (0x4812) = `teclado_del_jugador_1` |
+| [Knightmare](https://antxiko.github.io/Knightmare-disassembly/) | 20 | 209 | `pinta_rotulo` (0x4764) = `pinta_texto` |
+| [Konami’s Soccer](https://antxiko.github.io/KonamisSoccer-disassembly/) | 20 | 221 | `pinta_rotulo` (0x4764) = `escribe_un_rotulo` |
+| [Konami's Boxing](https://antxiko.github.io/Boxing-disassembly/) | 19 | 202 | `pinta_rotulo` (0x4764) = `pinta_texto` |
+| [Q*bert](https://antxiko.github.io/Qbert-disassembly/) | 18 | 181 | `descomprime` (0x477B) = `guion_rle` |
+| [Yie Ar Kung-Fu](https://antxiko.github.io/YieArKungFu-disassembly/) | 17 | 185 | `lee_teclado_1` (0x4812) = `lee_el_teclado` |
+| [Nemesis / Gradius](https://antxiko.github.io/Nemesis-disassembly/) | 16 | 170 | `descomprime` (0x477B) = `descomprime_con_destino` |
+
+The whole matrix, the 58 cartridges against each other, is on
+[The routines](https://antxiko.github.io/MSX-disassembly-database/THE-ROUTINES.html) in the series database, along
+with the method and the program that measures it.
